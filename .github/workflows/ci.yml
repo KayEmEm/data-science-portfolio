@@ -16,6 +16,7 @@ jobs:
       p01: ${{ steps.filter.outputs.p01 }}
       p02: ${{ steps.filter.outputs.p02 }}
       p03: ${{ steps.filter.outputs.p03 }}
+      p04: ${{ steps.filter.outputs.p04 }}
     steps:
       - uses: actions/checkout@v4
       - id: filter
@@ -36,6 +37,10 @@ jobs:
             p03:
               - 'common/**'
               - 'projects/p03_taxi_demand/**'
+              - '.github/workflows/**'
+            p04:
+              - 'common/**'
+              - 'projects/p04_email_uplift/**'
               - '.github/workflows/**'
 
   common:
@@ -109,4 +114,26 @@ jobs:
       - run: make lint
       - run: make test
       - name: Smoke run of the warehouse and report on synthetic files (no download)
+        run: make smoke
+
+  p04_email_uplift:
+    needs: changes
+    if: needs.changes.outputs.p04 == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/p04_email_uplift
+    env:
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # CausalML is left out here: it compiles from source on this Python version.
+      # The pipeline and tests skip its learner when it is absent.
+      - run: python -m pip install -e ../../common -e ".[dev]"
+      - run: make lint
+      - run: make test
+      - name: Smoke run of the full pipeline on synthetic customers (no download)
         run: make smoke
