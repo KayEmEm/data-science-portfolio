@@ -1,0 +1,6 @@
+**/data
+**/artifacts/smoke
+**/artifacts/mlruns
+**/artifacts/*.db
+**/__pycache__
+**/.pytest_cache

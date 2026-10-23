@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read  # paths-filter lists the changed files of a pull request
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      common: ${{ steps.filter.outputs.common }}
+      p01: ${{ steps.filter.outputs.p01 }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            common:
+              - 'common/**'
+              - '.github/workflows/**'
+            p01:
+              - 'common/**'
+              - 'projects/p01_loan_default/**'
+              - '.github/workflows/**'
+
+  common:
+    needs: changes
+    if: needs.changes.outputs.common == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: common
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
+      - run: python -m pytest -q
+
+  p01_loan_default:
+    needs: changes
+    if: needs.changes.outputs.p01 == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/p01_loan_default
+    env:
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -e ../../common -e ".[dev]"
+      - run: make lint
+      - run: make test
+      - name: Smoke run of the full pipeline on synthetic tables
+        run: make smoke
