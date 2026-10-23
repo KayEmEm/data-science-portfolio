@@ -26,10 +26,10 @@ A mock up in the layout of a BI report, built with Streamlit and Plotly (no BI t
 
 ## Dataset and license
 
-* **Trips:** [NYC Taxi and Limousine Commission trip record data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page), yellow taxi records for January to December 2024 (12 Parquet files, 41,169,720 rows), and the taxi zone lookup table (265 zones). License and terms of use: to be confirmed and cited here.
-* **Weather:** [NOAA NCEI daily summaries (GHCN Daily)](https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00094728&startDate=2024-01-01&endDate=2024-12-31&dataTypes=PRCP,SNOW,TMAX,TMIN&units=metric&format=csv) for New York Central Park, station USW00094728, 366 days: precipitation, snowfall, maximum and minimum temperature, metric units. License: to be confirmed and cited here.
+* **Trips:** [NYC Taxi and Limousine Commission trip record data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page), yellow taxi records for January to December 2024 (12 Parquet files, 41,169,720 rows), and the taxi zone lookup table (265 zones). Terms: the [NYC.gov terms of use](https://www.nyc.gov/main/terms-of-use) state that materials on NYC.gov are provided "as is", without warranty of accuracy or completeness. No explicit license for the trip data was found; the data is not redistributed here and is downloaded from the TLC by `make data`.
+* **Weather:** [NOAA NCEI daily summaries (GHCN Daily)](https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00094728&startDate=2024-01-01&endDate=2024-12-31&dataTypes=PRCP,SNOW,TMAX,TMIN&units=metric&format=csv) for New York Central Park, station USW00094728, 366 days: precipitation, snowfall, maximum and minimum temperature, metric units. No explicit license for these weather records was confirmed; the data is not redistributed here and is downloaded from NOAA by `make data`.
 
-The raw data is not committed to this repository. `make data` downloads it. Where the download hosts are not reachable, files downloaded by hand can be placed with `make ingest SOURCES=<folder>`, which identifies each file by its content; this is how the run reported here received its data.
+The repository holds only code and results derived from the data: aggregated tables, figures and findings. The raw data is not committed to this repository. `make data` downloads it. Where the download hosts are not reachable, files downloaded by hand can be placed with `make ingest SOURCES=<folder>`, which identifies each file by its content; this is how the run reported here received its data.
 
 ## Approach
 
