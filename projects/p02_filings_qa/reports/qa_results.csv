@@ -1,0 +1,4 @@
+run,contexts,generator,model,questions,accuracy (judge),declined (judge),supported (judge),figure match (metrics questions),cites an evidence page,input tokens per question,output tokens per question,USD per question,median latency s,p90 latency s,USD total (answers),USD total (grading)
+corpus_dense_k8__extractive_none,corpus_dense_k8,extractive,none,150,,,,0.24,0.1133,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+doc_dense_k8__extractive_none,doc_dense_k8,extractive,none,150,,,,0.26,0.2133,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+doc_oracle__extractive_none,doc_oracle,extractive,none,150,,,,0.42,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

@@ -5,6 +5,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 | # | Project | Task type | Status | Headline result |
 | --- | --- | --- | --- | --- |
 | 1 | [Credit default risk](projects/p01_loan_default) | Predictive modeling on tabular data | complete | test ROC AUC 0.782 (baseline 0.747); 34.2 million NT dollars profit at the chosen threshold |
+| 2 | [Question answering over filings](projects/p02_filings_qa) | NLP and LLM applications | in progress | dense retrieval recall@8 0.553 (BM25 0.360); answer accuracy pending |
 
 ## Shared conventions
 
@@ -21,6 +22,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 common/                 shared helpers: seed, metrics, plotting style
 projects/
   p01_loan_default/     own README, pyproject.toml, Makefile, src/, tests/, notebooks/, reports/
+  p02_filings_qa/
 .github/workflows/      one CI workflow
 ```
 
