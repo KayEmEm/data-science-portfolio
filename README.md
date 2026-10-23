@@ -8,6 +8,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 | 2 | [Question answering over filings](projects/p02_filings_qa) | NLP and LLM applications | in progress | dense retrieval recall@8 0.553 (BM25 0.360); answer accuracy pending |
 | 3 | [New York taxi demand](projects/p03_taxi_demand) | Exploratory analysis and reporting | complete | 38.7 million trips in a DuckDB warehouse; dashboard mock up and five findings (airports: 9.8 percent of trips, 27.1 percent of revenue) |
 | 4 | [Email campaign uplift](projects/p04_email_uplift) | Experimentation and causal inference | complete | mens email: +$0.77 spend per customer (95% CI 0.49 to 1.05); mailing everyone beats four uplift model policies; observational estimate without past spend is biased by +2.0 pp |
+| 5 | [Retail demand forecasting](projects/p05_retail_forecasting) | Time series forecasting | complete | M5 test WRMSSE 0.562 with a global LightGBM model (seasonal naive 0.847); 95% intervals cover 94.1% of item x store days |
 
 ## Shared conventions
 
@@ -27,6 +28,7 @@ projects/
   p02_filings_qa/
   p03_taxi_demand/
   p04_email_uplift/
+  p05_retail_forecasting/
 .github/workflows/      one CI workflow
 ```
 

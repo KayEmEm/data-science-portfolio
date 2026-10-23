@@ -40,6 +40,13 @@ LABELS = {
     "ensemble": "Mean of LightGBM and {partner}",
     "snaive": "Seasonal naive (baseline)",
 }
+SHORT = {
+    "lgbm": "LightGBM",
+    "ets": "ETS",
+    "prophet": "Prophet",
+    "nhits": "N-HiTS",
+    "snaive": "seasonal naive",
+}
 INK = "#0b0b0b"
 MUTED = "#52514e"
 # Series shown in the forecast figure, one per level of the hierarchy.
@@ -47,7 +54,7 @@ EXAMPLES = [(1, "Total"), (3, "CA_3"), (9, "CA_3_FOODS_3"), (12, "FOODS_3_090_CA
 
 
 def label(method: str, partner: str) -> str:
-    return LABELS.get(method, method).format(partner=LABELS.get(partner, partner))
+    return LABELS.get(method, method).format(partner=SHORT.get(partner, partner))
 
 
 def markdown(frame: pd.DataFrame, digits: int = 3) -> str:
@@ -96,7 +103,7 @@ def wrmsse_figure(summary: pd.DataFrame, partner: str, n_windows: int, path: Pat
 
 def level_figure(scores: pd.DataFrame, methods: list[str], partner: str, path: Path) -> None:
     backtest = scores[scores["window"] == "backtest"].groupby("method").mean(numeric_only=True)
-    fig, ax = plt.subplots(figsize=(8, 4.5))
+    fig, ax = plt.subplots(figsize=(10, 5))
     x = np.arange(1, 13)
     for method in methods:
         values = backtest.loc[method, [f"level_{n}" for n in x]]
@@ -111,10 +118,10 @@ def level_figure(scores: pd.DataFrame, methods: list[str], partner: str, path: P
             ms=4,
             label=label(method, partner),
         )
-    ax.set_xticks(x, [f"{n}\n{LEVEL_NAMES[n]}" for n in x], fontsize=7)
+    ax.set_xticks(x, [f"{n}\n{LEVEL_NAMES[n].replace(' x ', chr(10) + 'x ')}" for n in x], fontsize=7)
     ax.set_ylabel("weighted RMSSE, backtest mean")
     ax.set_title("Error by level of the hierarchy")
-    ax.legend(frameon=False, fontsize=8)
+    ax.legend(frameon=False, fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=3)
     fig.savefig(path)
     plt.close(fig)
 
