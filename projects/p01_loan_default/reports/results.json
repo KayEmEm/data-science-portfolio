@@ -1,0 +1,83 @@
+{
+  "data": "uci-credit-card-default",
+  "n_train": 24000,
+  "n_test": 6000,
+  "train_default_rate": 0.22120833333333334,
+  "costs": {
+    "loss_given_default": 0.45,
+    "margin": 0.1
+  },
+  "break_even_threshold": 0.18181818181818182,
+  "models": {
+    "logistic_regression": {
+      "cv_raw": {
+        "roc_auc": 0.7606793530929734,
+        "pr_auc": 0.5092063270860928,
+        "brier": 0.1401986559719677
+      },
+      "test_raw": {
+        "roc_auc": 0.7467613255839193,
+        "pr_auc": 0.5024568800386217,
+        "brier": 0.14252743958343925
+      },
+      "test_calibrated": {
+        "roc_auc": 0.7468459883784592,
+        "pr_auc": 0.49133751559675104,
+        "brier": 0.14246235519559505
+      },
+      "threshold": 0.165,
+      "cv_profit_at_threshold": 138730500.0,
+      "test_profit_at_threshold": 29708044.0,
+      "test_approval_rate": 0.6255,
+      "test_bad_rate_approved": 0.11723954169997336,
+      "n_estimators": null
+    },
+    "lightgbm": {
+      "cv_raw": {
+        "roc_auc": 0.7871506396132021,
+        "pr_auc": 0.5621882839673336,
+        "brier": 0.13319985535190645
+      },
+      "test_raw": {
+        "roc_auc": 0.7823804146090249,
+        "pr_auc": 0.560634083068011,
+        "brier": 0.13431365503353043
+      },
+      "test_calibrated": {
+        "roc_auc": 0.7820936899448498,
+        "pr_auc": 0.5459819063264127,
+        "brier": 0.13456521836546126
+      },
+      "threshold": 0.17,
+      "cv_profit_at_threshold": 151340500.0,
+      "test_profit_at_threshold": 34170500.0,
+      "test_approval_rate": 0.6686666666666666,
+      "test_bad_rate_approved": 0.11415752741774676,
+      "n_estimators": 109
+    },
+    "xgboost": {
+      "cv_raw": {
+        "roc_auc": 0.787991857625979,
+        "pr_auc": 0.5647567445660768,
+        "brier": 0.13292912297663415
+      },
+      "test_raw": {
+        "roc_auc": 0.781703837933802,
+        "pr_auc": 0.5626111948278603,
+        "brier": 0.13417549431324005
+      },
+      "test_calibrated": {
+        "roc_auc": 0.782191818155283,
+        "pr_auc": 0.550212150581506,
+        "brier": 0.13401760564689674
+      },
+      "threshold": 0.18,
+      "cv_profit_at_threshold": 151282600.0,
+      "test_profit_at_threshold": 33588500.0,
+      "test_approval_rate": 0.6501666666666667,
+      "test_bad_rate_approved": 0.11381697000769034,
+      "n_estimators": 136
+    }
+  },
+  "selected_model": "lightgbm"
+}

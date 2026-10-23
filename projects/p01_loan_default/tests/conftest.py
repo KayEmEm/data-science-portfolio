@@ -2,19 +2,19 @@ import pytest
 
 from loan_default.config import CostAssumptions, RunSettings
 from loan_default.features import build_features
-from loan_default.synthetic import write_tables
+from loan_default.synthetic import write_clients
 
 
 @pytest.fixture(scope="session")
-def parquet_dir(tmp_path_factory):
-    path = tmp_path_factory.mktemp("parquet")
-    write_tables(path, n_applicants=1500)
+def clients_path(tmp_path_factory):
+    path = tmp_path_factory.mktemp("data") / "clients.parquet"
+    write_clients(path, n_clients=2000)
     return path
 
 
 @pytest.fixture(scope="session")
-def features(parquet_dir):
-    return build_features(parquet_dir)
+def features(clients_path):
+    return build_features(clients_path)
 
 
 @pytest.fixture(scope="session")

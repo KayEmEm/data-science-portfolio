@@ -1,4 +1,4 @@
-"""Build one feature row per applicant with DuckDB SQL over the seven source tables."""
+"""Build the feature table with DuckDB SQL over the client table."""
 
 import argparse
 from importlib import resources
@@ -7,45 +7,31 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-from loan_default.config import FEATURES_PATH, ID_COL, PARQUET_DIR, REQUIRED_COLUMNS
-from loan_default.data import validate
-
-# Aggregate queries joined to the application table, in join order.
-AGGREGATE_QUERIES = ["bureau", "previous", "pos_cash", "installments", "credit_card"]
+from loan_default.config import CLIENTS_PATH, FEATURES_PATH, ID_COL
 
 
 def read_sql(name: str) -> str:
     return resources.files("loan_default.sql").joinpath(f"{name}.sql").read_text()
 
 
-def build_features(parquet_dir: Path = PARQUET_DIR) -> pd.DataFrame:
-    """Register each Parquet table as a view, run the SQL files and join the results."""
-    validate(parquet_dir, ".parquet")
+def build_features(clients_path: Path = CLIENTS_PATH) -> pd.DataFrame:
     con = duckdb.connect()
-    for table in REQUIRED_COLUMNS:
-        con.execute(
-            f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{parquet_dir / f'{table}.parquet'}')"
-        )
-    con.execute(f"CREATE TEMP TABLE app AS {read_sql('application')}")
-    joined = "SELECT * FROM app"
-    for name in AGGREGATE_QUERIES:
-        con.execute(f"CREATE TEMP TABLE agg_{name} AS {read_sql(name)}")
-        joined += f" LEFT JOIN agg_{name} USING ({ID_COL})"
-    frame = con.execute(f"{joined} ORDER BY {ID_COL}").df()
+    con.read_parquet(str(clients_path)).create_view("clients")
+    frame = con.execute(read_sql("features")).df()
     if frame[ID_COL].duplicated().any():
-        raise ValueError("feature table has duplicate applicant ids")
+        raise ValueError("feature table has duplicate client ids")
     return frame
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--parquet-dir", type=Path, default=PARQUET_DIR)
+    parser.add_argument("--clients", type=Path, default=CLIENTS_PATH)
     parser.add_argument("--out", type=Path, default=FEATURES_PATH)
     args = parser.parse_args()
-    frame = build_features(args.parquet_dir)
+    frame = build_features(args.clients)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     frame.to_parquet(args.out, index=False)
-    print(f"{len(frame):,} applicants and {frame.shape[1] - 2} features written to {args.out}")
+    print(f"{len(frame):,} clients and {frame.shape[1] - 2} features written to {args.out}")
 
 
 if __name__ == "__main__":

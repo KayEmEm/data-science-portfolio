@@ -49,5 +49,5 @@ def test_api_scores_example(trained, monkeypatch):
     assert payload["decision"] in {"approve", "reject"}
     assert payload["unknown_features"] == []
 
-    sparse = client.post("/score", json={"features": {"AMT_CREDIT": 500000.0, "NOT_A_COLUMN": 1}}).json()
+    sparse = client.post("/score", json={"features": {"LIMIT_BAL": 50000, "NOT_A_COLUMN": 1}}).json()
     assert sparse["unknown_features"] == ["NOT_A_COLUMN"]

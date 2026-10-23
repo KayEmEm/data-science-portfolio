@@ -1,4 +1,4 @@
-"""Paths, table schema expectations and run settings for project 1."""
+"""Paths, source schema expectations and run settings for project 1."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,79 +6,46 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
-PARQUET_DIR = DATA_DIR / "parquet"
+CLIENTS_PATH = DATA_DIR / "clients.parquet"
 FEATURES_PATH = DATA_DIR / "features.parquet"
 ARTIFACTS_DIR = PROJECT_DIR / "artifacts"
 REPORTS_DIR = PROJECT_DIR / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 
-KAGGLE_COMPETITION = "home-credit-default-risk"
+SOURCE_URL = "https://archive.ics.uci.edu/static/public/350/default+of+credit+card+clients.zip"
 SEED = 42
-ID_COL = "SK_ID_CURR"
+ID_COL = "CLIENT_ID"
 TARGET_COL = "TARGET"
+EXPOSURE_COL = "LIMIT_BAL"
+AGE_COL = "AGE"
 
-# Columns each source table must contain. The loader checks them before any
-# feature work, so a schema change in the source data stops the run early.
-REQUIRED_COLUMNS: dict[str, list[str]] = {
-    "application_train": [
-        "SK_ID_CURR",
-        "TARGET",
-        "AMT_INCOME_TOTAL",
-        "AMT_CREDIT",
-        "AMT_ANNUITY",
-        "AMT_GOODS_PRICE",
-        "DAYS_BIRTH",
-        "DAYS_EMPLOYED",
-        "EXT_SOURCE_1",
-        "EXT_SOURCE_2",
-        "EXT_SOURCE_3",
-    ],
-    "bureau": [
-        "SK_ID_CURR",
-        "SK_ID_BUREAU",
-        "CREDIT_ACTIVE",
-        "DAYS_CREDIT",
-        "CREDIT_DAY_OVERDUE",
-        "AMT_CREDIT_SUM",
-        "AMT_CREDIT_SUM_DEBT",
-    ],
-    "bureau_balance": ["SK_ID_BUREAU", "MONTHS_BALANCE", "STATUS"],
-    "previous_application": [
-        "SK_ID_PREV",
-        "SK_ID_CURR",
-        "NAME_CONTRACT_STATUS",
-        "AMT_APPLICATION",
-        "AMT_CREDIT",
-        "DAYS_DECISION",
-    ],
-    "POS_CASH_balance": ["SK_ID_PREV", "SK_ID_CURR", "MONTHS_BALANCE", "SK_DPD", "SK_DPD_DEF"],
-    "installments_payments": [
-        "SK_ID_PREV",
-        "SK_ID_CURR",
-        "DAYS_INSTALMENT",
-        "DAYS_ENTRY_PAYMENT",
-        "AMT_INSTALMENT",
-        "AMT_PAYMENT",
-    ],
-    "credit_card_balance": [
-        "SK_ID_PREV",
-        "SK_ID_CURR",
-        "MONTHS_BALANCE",
-        "AMT_BALANCE",
-        "AMT_CREDIT_LIMIT_ACTUAL",
-        "SK_DPD",
-    ],
-}
+# Source column names, as in the UCI spreadsheet header. The loader checks
+# them before any feature work, so a change in the source file stops the run.
+MONTHS = range(1, 7)
+SOURCE_TARGET = "default payment next month"
+REQUIRED_COLUMNS = [
+    "ID",
+    "LIMIT_BAL",
+    "SEX",
+    "EDUCATION",
+    "MARRIAGE",
+    "AGE",
+    "PAY_0",
+    *[f"PAY_{m}" for m in range(2, 7)],
+    *[f"BILL_AMT{m}" for m in MONTHS],
+    *[f"PAY_AMT{m}" for m in MONTHS],
+    SOURCE_TARGET,
+]
 
 
 @dataclass(frozen=True)
 class CostAssumptions:
     """Illustrative unit economics for the approval threshold.
 
-    These are assumptions, not values from the dataset. Approving a borrower
-    who defaults loses ``loss_given_default`` times the credit amount.
-    Approving a borrower who repays earns ``margin`` times the credit amount.
-    Rejecting a borrower earns and loses nothing.
+    These are assumptions, not values from the dataset. Approving a client
+    who defaults loses ``loss_given_default`` times the credit limit.
+    Approving a client who repays earns ``margin`` times the credit limit.
+    Rejecting a client earns and loses nothing.
     """
 
     loss_given_default: float = 0.45

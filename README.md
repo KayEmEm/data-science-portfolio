@@ -4,7 +4,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 
 | # | Project | Task type | Status | Headline result |
 | --- | --- | --- | --- | --- |
-| 1 | [Loan default risk](projects/p01_loan_default) | Predictive modeling on tabular data | code complete, real data run pending | pending |
+| 1 | [Credit default risk](projects/p01_loan_default) | Predictive modeling on tabular data | complete | test ROC AUC 0.782 (baseline 0.747); 34.2 million NT dollars profit at the chosen threshold |
 
 ## Shared conventions
 

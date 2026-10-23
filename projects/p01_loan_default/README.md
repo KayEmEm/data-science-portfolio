@@ -1,59 +1,53 @@
-# Project 1: Loan default risk
+# Project 1: Credit default risk
 
-**Status: code complete and tested on synthetic tables. Results on the real data are pending, because the dataset download is not yet confirmed.** No number in this README comes from the real data yet.
+Predict which credit card clients will default next month, and set the approval threshold that gives the highest profit under a stated cost matrix.
 
-## Problem
+![Threshold analysis](reports/figures/threshold_analysis.png)
 
-A lender must decide which applicants to approve. Approving a borrower who later defaults loses part of the loan; rejecting a borrower who would repay loses the interest margin. This project predicts the probability of default for each applicant and sets the approval threshold that gives the highest profit under a stated cost matrix.
+## Headline result
+
+On a held out test split of 6,000 clients, LightGBM reaches **ROC AUC 0.782** against **0.747** for the logistic regression baseline. At the chosen threshold (approve when the calibrated probability of default is below 0.170) it approves 66.9 percent of clients, the default rate among approved clients falls to 11.4 percent from 22.1 percent overall, and the test profit is **34.2 million NT dollars**, against 29.7 million for the baseline and 0.4 million for approving every client. The profit figures depend on the cost assumptions below.
+
+| Model | CV ROC AUC | Test ROC AUC | Test PR AUC | Test Brier (calibrated) | Threshold | Test approval rate | Test profit (NT dollars) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Logistic regression (baseline) | 0.7607 | 0.7468 | 0.4913 | 0.1425 | 0.165 | 0.6255 | 29,708,044 |
+| **LightGBM (selected)** | 0.7872 | 0.7821 | 0.5460 | 0.1346 | 0.170 | 0.6687 | 34,170,500 |
+| XGBoost | 0.7880 | 0.7822 | 0.5502 | 0.1340 | 0.180 | 0.6502 | 33,588,500 |
+
+LightGBM and XGBoost perform at the same level on the test split. LightGBM was selected before the test split was scored, because its out of fold profit on the training split was slightly higher (151.34 against 151.28 million NT dollars). Full tables: [`reports/model_comparison.md`](reports/model_comparison.md), [`reports/results.json`](reports/results.json). Model card: [`MODEL_CARD.md`](MODEL_CARD.md).
 
 ## Dataset and license
 
-[Home Credit Default Risk](https://www.kaggle.com/competitions/home-credit-default-risk) on Kaggle: seven related tables on about 300,000 applicants.
+[Default of Credit Card Clients](https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients), UCI Machine Learning Repository. 30,000 credit card clients in Taiwan, with monthly payment records from April to September 2005, with 23 features and a binary target: default payment in the following month (22.1 percent positive).
 
-| Table | Grain | Used for |
-| --- | --- | --- |
-| `application_train` | one row per applicant | target, application features |
-| `bureau`, `bureau_balance` | credits at other lenders, monthly status | bureau history |
-| `previous_application` | earlier applications to the same lender | approval history |
-| `POS_CASH_balance` | monthly point of sale and cash loan balance | days past due |
-| `installments_payments` | each instalment on earlier loans | payment delay and partial payment |
-| `credit_card_balance` | monthly card balance | utilization |
+**License: Creative Commons Attribution 4.0 International (CC BY 4.0).**
+Citation: Yeh, I. (2009). Default of Credit Card Clients [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C55S3H
 
-**License: to be confirmed** from the competition rules before the first real run. The raw data is never committed to this repository; `make data` downloads it with your own Kaggle account.
+The raw data is not committed to this repository. `make data` downloads it from UCI.
 
 ## Approach
 
-1. **Schema check** (`data.py`): each table must contain the columns listed in `config.REQUIRED_COLUMNS`, or the run stops with a clear message.
-2. **Features in SQL** (`sql/*.sql`, run by DuckDB in `features.py`): one query per source table aggregates it to one row per applicant; the results join to the application table. Examples: debt to credit ratio at the bureau, share of late instalments, card utilization, share of refused earlier applications.
+1. **Load and check** (`data.py`): read the spreadsheet, find its header row, check that all 25 expected columns are present, that client ids are unique and that the target is binary.
+2. **Features in SQL** (`sql/features.sql`, run by DuckDB): from six months of repayment status, bills and payments: maximum delay, number of months in delay, credit utilization (latest, mean, maximum), bill trend, ratio of amount paid to amount billed, and number of months with a bill but no payment. Sex, education and marital status are categorical.
 3. **Models** (`modeling.py`): logistic regression as the baseline; LightGBM and XGBoost with stratified five fold cross validation and early stopping. The final tree count is the mean best iteration across folds.
-4. **Calibration**: isotonic regression fitted on the out of fold predictions, so the calibrator never sees a prediction on a row the model trained on.
-5. **Threshold** (`threshold.py`): approve when the calibrated probability of default is below the threshold. Approving a good borrower earns `margin × credit`; approving a defaulter loses `loss_given_default × credit`. The threshold is chosen on out of fold predictions of the training split only, and compared with the break even rule `margin / (margin + loss_given_default)`.
-6. **Model selection**: the model with the highest out of fold profit. The held out test split (20 percent) is scored once, for the report.
-7. **Explanations** (`evaluate.py`): exact TreeSHAP values from the boosting library, shown as a SHAP summary plot.
-8. **Fairness check** (`fairness.py`): approval rate, share of good borrowers rejected, share of defaulters approved and ROC AUC per age band.
-9. **Tracking**: every model run is logged to a local MLflow store under `artifacts/`.
+4. **Calibration**: isotonic regression fitted on the out of fold predictions, so the calibrator never sees a prediction on a row the model trained on. The boosted models were already close to calibrated; isotonic calibration changed the Brier score by less than 0.001 ([figure](reports/figures/calibration.png)).
+5. **Threshold** (`threshold.py`): approve when the calibrated probability of default is below the threshold. The threshold is chosen on out of fold predictions of the training split only. The chosen value (0.170) is close to the break even rule `margin / (margin + loss_given_default)` = 0.182.
+6. **Selection**: the model with the highest out of fold profit. The held out test split (20 percent, stratified) is scored once, for this report.
+7. **Explanations** (`evaluate.py`): exact TreeSHAP values from LightGBM ([figure](reports/figures/explanations.png)). The latest repayment status (`PAY_0`) and the delay features carry most of the signal, followed by payment amounts and the credit limit.
+8. **Fairness check** (`fairness.py`): metrics per age band at the chosen threshold ([table](reports/fairness_age.md)). Approval rates range from 60.5 percent (60 and over, 76 clients) to 70.0 percent (30 to 39); ROC AUC ranges from 0.745 to 0.789.
+9. **Tracking**: every model run is logged to a local MLflow store under `artifacts/` (`mlflow ui --backend-store-uri sqlite:///artifacts/mlflow.db`).
 10. **Serving** (`api.py`, `Dockerfile`): a FastAPI service that returns the probability of default and the decision.
 
 ### Cost assumptions
 
-The cost matrix is an assumption, not a value from the data:
+The cost matrix is an assumption, not a value from the data. The credit limit (`LIMIT_BAL`) serves as the exposure.
 
-| Parameter | Default | Meaning |
-| --- | --- | --- |
-| `loss_given_default` | 0.45 | share of the credit lost when a borrower defaults |
-| `margin` | 0.10 | share of the credit earned when a borrower repays |
+| Parameter | Value | Meaning |
+| --- | ---: | --- |
+| `loss_given_default` | 0.45 | share of the credit limit lost when a client defaults |
+| `margin` | 0.10 | share of the credit limit earned when a client repays |
 
 Both can be changed: `python -m loan_default.train --lgd 0.6 --margin 0.08`.
-
-## Results
-
-Pending the first run on the real data. The run will fill:
-
-* `reports/model_comparison.md`: ROC AUC, PR AUC and Brier score (raw and calibrated) per model, with threshold, approval rate and test profit
-* `reports/figures/threshold_analysis.png`: profit and approval rate against the threshold
-* `reports/figures/calibration.png`: reliability curve before and after calibration
-* `reports/figures/explanations.png`: SHAP summary
-* `reports/fairness_age.md`: metrics per age band
 
 ## Reproduce
 
@@ -61,19 +55,16 @@ From this folder, with Python 3.11 or later:
 
 ```bash
 make install            # this project and the shared common package
-make all                # data, features, train, evaluate (needs Kaggle credentials)
-make smoke              # the same pipeline on synthetic tables, no download needed
+make all                # data, features, train, evaluate (under one minute in the build environment)
+make smoke              # the same pipeline on a synthetic table, no download
 ```
 
-`make data` needs the Kaggle CLI configured (`KAGGLE_USERNAME` and `KAGGLE_KEY`, or `~/.kaggle/kaggle.json`) and the competition rules accepted with that account.
-
-`make smoke` writes everything under `artifacts/smoke/`. Its numbers come from random synthetic tables and say nothing about credit risk.
+`make smoke` writes everything under `artifacts/smoke/`. Its numbers come from random synthetic data and say nothing about credit risk.
 
 ### Scoring API
 
 ```bash
-make train              # writes artifacts/model.joblib
-make api                # http://localhost:8000/docs
+make api                # after make train; docs at http://localhost:8000/docs
 curl -X POST localhost:8000/score -H 'Content-Type: application/json' -d @artifacts/example_request.json
 ```
 
@@ -83,15 +74,10 @@ Docker: `make docker`, then `docker run -p 8000:8000 loan-default-api`.
 
 ```
 src/loan_default/   config, data, features, sql/, modeling, threshold, fairness, train, evaluate, api, synthetic
-tests/              unit tests and an end to end test on synthetic tables
-notebooks/          narrative exploration (after the first real run)
-reports/            comparison tables and figures
+tests/              unit tests and an end to end test on a synthetic table
+reports/            comparison tables, fairness table, figures
 ```
-
-## Model card
-
-To be written after the first real run: intended use, training data, metrics, calibration, fairness results and limits.
 
 ## Cost
 
-No paid service used so far: 0 CAD.
+No paid service used: 0 CAD.

@@ -61,7 +61,7 @@ def logistic_pipeline(categorical: list[str], numeric: list[str]) -> Pipeline:
             (
                 "cat",
                 make_pipeline(
-                    FunctionTransformer(_categories_to_str),
+                    FunctionTransformer(_categories_to_str, feature_names_out="one-to-one"),
                     OneHotEncoder(handle_unknown="infrequent_if_exist", min_frequency=0.01),
                 ),
                 categorical,

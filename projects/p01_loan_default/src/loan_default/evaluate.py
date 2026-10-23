@@ -13,7 +13,15 @@ import xgboost as xgb
 from portfolio_common.plotting import apply_style
 from sklearn.calibration import calibration_curve
 
-from loan_default.config import ARTIFACTS_DIR, REPORTS_DIR, SEED, TARGET_COL, CostAssumptions
+from loan_default.config import (
+    AGE_COL,
+    ARTIFACTS_DIR,
+    EXPOSURE_COL,
+    REPORTS_DIR,
+    SEED,
+    TARGET_COL,
+    CostAssumptions,
+)
 from loan_default.fairness import group_report
 from loan_default.modeling import FittedModel
 from loan_default.threshold import profit_curve
@@ -46,7 +54,7 @@ def comparison_table(summary: dict) -> pd.DataFrame:
 
 def threshold_figure(test: pd.DataFrame, name: str, summary: dict, out: Path) -> None:
     costs = CostAssumptions(**summary["costs"])
-    curve = profit_curve(test[TARGET_COL], test[f"p_{name}"], test["AMT_CREDIT"], costs)
+    curve = profit_curve(test[TARGET_COL], test[f"p_{name}"], test[EXPOSURE_COL], costs)
     chosen = summary["models"][name]["threshold"]
     fig, ax = plt.subplots()
     ax.plot(curve["threshold"], curve["profit"] / 1e6, label="profit on test split (millions)")
@@ -58,7 +66,7 @@ def threshold_figure(test: pd.DataFrame, name: str, summary: dict, out: Path) ->
         label=f"break even rule {summary['break_even_threshold']:.3f}",
     )
     ax.set_xlabel("approve when predicted probability of default is below")
-    ax.set_ylabel("profit (millions, currency of the data)")
+    ax.set_ylabel("profit (millions of NT dollars)")
     ax2 = ax.twinx()
     ax2.plot(curve["threshold"], curve["approval_rate"], color="#81b29a", alpha=0.8, label="approval rate")
     ax2.set_ylabel("approval rate")
@@ -115,7 +123,7 @@ def explanation_figure(fm: FittedModel, sample: pd.DataFrame, out: Path) -> None
     shap.summary_plot(
         values, display, max_display=20, show=False, plot_size=(8, 7), rng=np.random.default_rng(SEED)
     )
-    plt.title(f"SHAP values on {len(X):,} test applicants: {LABELS[fm.name]}")
+    plt.title(f"SHAP values on {len(X):,} test clients: {LABELS[fm.name]}")
     plt.savefig(out, bbox_inches="tight")
     plt.close("all")
 
@@ -133,7 +141,7 @@ def run(artifacts_dir: Path, reports_dir: Path) -> None:
     table.to_csv(reports_dir / "model_comparison.csv", index=False)
     (reports_dir / "model_comparison.md").write_text(table.to_markdown(index=False, floatfmt=".4f") + "\n")
 
-    fairness = group_report(test[TARGET_COL], test[f"p_{name}"], test["APP_AGE_YEARS"], bundle["threshold"])
+    fairness = group_report(test[TARGET_COL], test[f"p_{name}"], test[AGE_COL], bundle["threshold"])
     fairness.to_csv(reports_dir / "fairness_age.csv", index=False)
     (reports_dir / "fairness_age.md").write_text(fairness.to_markdown(index=False, floatfmt=".4f") + "\n")
 

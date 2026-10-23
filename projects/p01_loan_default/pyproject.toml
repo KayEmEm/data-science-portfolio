@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "loan-default"
 version = "0.1.0"
-description = "Loan default risk model with calibrated probabilities and a cost based approval threshold"
+description = "Credit default risk model with calibrated probabilities and a cost based approval threshold"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
@@ -19,6 +19,7 @@ dependencies = [
     "shap==0.54.1",
     "matplotlib==3.11.2",
     "tabulate==0.10.0",
+    "python-calamine==0.9.0",
     "mlflow==3.17.2",
     "joblib==1.6.0",
     "fastapi==0.161.1",
@@ -27,7 +28,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-data = ["kaggle==2.2.5"]
 dev = ["pytest==9.1.1", "ruff==0.17.2", "httpx==0.28.1"]
 
 [tool.setuptools.packages.find]

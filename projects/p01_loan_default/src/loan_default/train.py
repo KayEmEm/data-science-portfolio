@@ -18,7 +18,9 @@ from portfolio_common.seed import set_seed
 from sklearn.model_selection import train_test_split
 
 from loan_default.config import (
+    AGE_COL,
     ARTIFACTS_DIR,
+    EXPOSURE_COL,
     FEATURES_PATH,
     ID_COL,
     SEED,
@@ -30,7 +32,7 @@ from loan_default.modeling import MODEL_NAMES, fit_with_cv
 from loan_default.threshold import best_threshold, break_even_threshold, profit_curve
 
 EXPERIMENT = "p01_loan_default"
-REPORT_COLUMNS = [ID_COL, TARGET_COL, "AMT_CREDIT", "APP_AGE_YEARS"]
+REPORT_COLUMNS = [ID_COL, TARGET_COL, EXPOSURE_COL, AGE_COL]
 
 
 def _json_value(value):
@@ -87,9 +89,9 @@ def run(
             oof_cal = fm.calibrator.predict(fm.oof_raw)
             test_raw = fm.predict_raw(test)
             test_cal = fm.calibrator.predict(test_raw)
-            curve = profit_curve(y_train, oof_cal, train["AMT_CREDIT"], costs)
+            curve = profit_curve(y_train, oof_cal, train[EXPOSURE_COL], costs)
             t = best_threshold(curve)
-            test_curve = profit_curve(y_test, test_cal, test["AMT_CREDIT"], costs)
+            test_curve = profit_curve(y_test, test_cal, test[EXPOSURE_COL], costs)
             at_t = test_curve.loc[np.isclose(test_curve["threshold"], t)].iloc[0]
             result = {
                 "cv_raw": binary_metrics(y_train, fm.oof_raw),
@@ -147,7 +149,7 @@ def main() -> None:
     parser.add_argument("--features", type=Path, default=FEATURES_PATH)
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--quick", action="store_true", help="small settings for a smoke run")
-    parser.add_argument("--data-label", default="home-credit", help="recorded with every output")
+    parser.add_argument("--data-label", default="uci-credit-card-default", help="recorded with every output")
     parser.add_argument("--models", nargs="+", default=MODEL_NAMES, choices=MODEL_NAMES)
     parser.add_argument("--lgd", type=float, default=CostAssumptions.loss_given_default)
     parser.add_argument("--margin", type=float, default=CostAssumptions.margin)
