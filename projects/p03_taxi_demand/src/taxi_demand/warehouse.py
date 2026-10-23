@@ -7,6 +7,7 @@ from pathlib import Path
 
 import duckdb
 import pandas as pd
+from pandas.tseries.holiday import USFederalHolidayCalendar
 
 from taxi_demand import config
 
@@ -34,7 +35,15 @@ def analysis_queries() -> list[str]:
     return sorted(p.name.removesuffix(".sql") for p in ANALYSIS_SQL.iterdir() if p.name.endswith(".sql"))
 
 
-def register_raw(con: duckdb.DuckDBPyConnection, raw_dir: Path) -> None:
+def holiday_table(year: int) -> pd.DataFrame:
+    """Federal holidays (pandas calendar) and the extra days in ``config.EXTRA_HOLIDAYS``."""
+    federal = USFederalHolidayCalendar().holidays(f"{year}-01-01", f"{year}-12-31")
+    extra = pd.to_datetime([f"{year}-{day}" for day in config.EXTRA_HOLIDAYS])
+    days = federal.union(extra)
+    return pd.DataFrame({"holiday_date": days.date})
+
+
+def register_raw(con: duckdb.DuckDBPyConnection, raw_dir: Path, year: int = config.YEAR) -> None:
     """Expose the raw files as the views raw_trips, raw_zones and raw_weather.
 
     The relation API takes the paths as values, so no path is spliced into SQL text.
@@ -48,6 +57,7 @@ def register_raw(con: duckdb.DuckDBPyConnection, raw_dir: Path) -> None:
     con.read_csv(str(raw_dir / "weather_central_park.csv"), header=True, all_varchar=True).to_view(
         "raw_weather"
     )
+    con.register("holidays", holiday_table(year))
 
 
 def build(raw_dir: Path, warehouse: Path, marts_dir: Path, year: int) -> None:
@@ -55,7 +65,7 @@ def build(raw_dir: Path, warehouse: Path, marts_dir: Path, year: int) -> None:
     marts_dir.mkdir(parents=True, exist_ok=True)
     params = build_parameters(year)
     with duckdb.connect(str(warehouse)) as con:
-        register_raw(con, raw_dir)
+        register_raw(con, raw_dir, year)
         for name in build_scripts():
             started = time.perf_counter()
             sql = (BUILD_SQL / name).read_text(encoding="utf-8")

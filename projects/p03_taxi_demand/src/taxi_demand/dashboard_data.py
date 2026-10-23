@@ -117,6 +117,8 @@ def zone_ranking(zone_monthly: pd.DataFrame, filters: Filters, top: int = 15) ->
 
 
 def weather_view(daily: pd.DataFrame, filters: Filters) -> pd.DataFrame:
-    """Daily rows for the window. The demand index is computed over all boroughs and payments."""
-    mask = (daily["pickup_date"] >= filters.start) & (daily["pickup_date"] <= filters.end)
+    """Non holiday days in the window. The demand index is computed over all boroughs and payments."""
+    mask = (
+        (daily["pickup_date"] >= filters.start) & (daily["pickup_date"] <= filters.end) & ~daily["is_holiday"]
+    )
     return daily.loc[mask]

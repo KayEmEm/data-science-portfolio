@@ -1,6 +1,6 @@
 -- One row per day: demand, fares and Central Park weather.
--- demand_index is the day's trips divided by the mean for the same weekday in the same month,
--- so that weekly and seasonal patterns do not mask the weather effect.
+-- demand_index is the day's trips divided by the mean of the non holiday days with the same weekday
+-- in the same month, so that weekly and seasonal patterns do not mask the weather effect.
 CREATE OR REPLACE TABLE daily AS
 WITH day_totals AS (
     SELECT
@@ -28,7 +28,9 @@ weather AS (
 )
 SELECT
     d.*,
-    d.trips / avg(d.trips) OVER (PARTITION BY d.pickup_month, d.pickup_dow) AS demand_index,
+    h.holiday_date IS NOT NULL AS is_holiday,
+    d.trips / avg(d.trips) FILTER (WHERE h.holiday_date IS NULL) OVER (PARTITION BY d.pickup_month, d.pickup_dow)
+        AS demand_index,
     w.precip_mm,
     w.snow_mm,
     w.tmax_c,
@@ -42,4 +44,5 @@ SELECT
     END AS weather_class
 FROM day_totals AS d
 LEFT JOIN weather AS w ON w.weather_date = d.pickup_date
+LEFT JOIN holidays AS h ON h.holiday_date = d.pickup_date
 ORDER BY d.pickup_date;

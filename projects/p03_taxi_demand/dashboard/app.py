@@ -260,8 +260,8 @@ def weather_tab(marts, filters: Filters) -> None:
     days = weather_view(marts["daily"], filters)
     panel(
         "Demand index by weather",
-        "Each dot is a day. 1.0 equals the mean of the same weekday in the same month; "
-        "all boroughs and payments.",
+        "Each dot is a day; holidays are left out. 1.0 equals the mean of the same weekday in the same "
+        "month. All boroughs and payments.",
     )
     order = ["dry, under 1 mm", "rain 1 to 10 mm", "rain 10 mm or more", "snow 10 mm or more", "no record"]
     left, right = st.columns([3, 2])

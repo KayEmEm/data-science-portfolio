@@ -1,0 +1,31 @@
+{
+  "source_rows": 41169720,
+  "usable_trips": 38732490,
+  "usable_share": 0.9408004232236702,
+  "days": 366,
+  "mean_trips_per_day": 105826.47540983607,
+  "total_revenue_usd": 1094319678.250001,
+  "busiest_month": 10,
+  "quietest_month": 8,
+  "peak_weekday": "Thu",
+  "peak_hour": 18,
+  "peak_mean_trips": 8665.961538461539,
+  "trough_weekday": "Tue",
+  "trough_hour": 3,
+  "trough_mean_trips": 174.77358490566039,
+  "zones_with_trips": 261,
+  "top10_zone_share": 0.3775058097220189,
+  "airport_trip_share": 0.09841476755044666,
+  "airport_revenue_share": 0.27105558063691193,
+  "weekday_speed_slowest_mph": 9.904169182429246,
+  "weekday_speed_slowest_hour": 17,
+  "weekday_speed_fastest_mph": 23.034662639183658,
+  "weekday_speed_fastest_hour": 4,
+  "card_tip_rate": 0.222333435267628,
+  "demand_index_by_weather": {
+    "rain 10 mm or more": 1.0517649647958378,
+    "rain 1 to 10 mm": 1.0017783056163567,
+    "dry, under 1 mm": 0.9954240113943658,
+    "snow 10 mm or more": 0.92037364301802
+  }
+}

@@ -92,7 +92,8 @@ def plot_heatmap(hourly: pd.DataFrame, out: Path) -> None:
 
 def plot_weather(daily: pd.DataFrame, out: Path) -> None:
     order = ["dry, under 1 mm", "rain 1 to 10 mm", "rain 10 mm or more", "snow 10 mm or more"]
-    groups = [(c, daily.loc[daily["weather_class"] == c, "demand_index"].dropna()) for c in order]
+    usable = daily[~daily["is_holiday"]]
+    groups = [(c, usable.loc[usable["weather_class"] == c, "demand_index"].dropna()) for c in order]
     groups = [(c, g) for c, g in groups if len(g)]
     fig, ax = plt.subplots(figsize=(7, 3.6))
     for i, (_, values) in enumerate(groups):
@@ -102,7 +103,7 @@ def plot_weather(daily: pd.DataFrame, out: Path) -> None:
     ax.axhline(1.0, color="#8a8984", linewidth=0.8)
     ax.set_xticks(range(len(groups)), [f"{c}\n({len(g)} days)" for c, g in groups])
     ax.set_ylabel("Demand index (1.0 = same weekday mean)")
-    ax.set_title("Daily demand index by Central Park weather")
+    ax.set_title("Daily demand index by Central Park weather (holidays left out)")
     fig.savefig(out)
     plt.close(fig)
 

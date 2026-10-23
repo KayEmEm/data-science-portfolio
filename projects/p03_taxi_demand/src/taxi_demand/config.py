@@ -48,17 +48,9 @@ TRIP_COLUMNS = [
 ZONE_COLUMNS = ["LocationID", "Borough", "Zone", "service_zone"]
 WEATHER_COLUMNS = ["DATE", "PRCP", "SNOW", "TMAX", "TMIN"]
 
-# TLC data dictionary codes for yellow taxi records.
-PAYMENT_TYPES = {
-    0: "Flex fare",
-    1: "Credit card",
-    2: "Cash",
-    3: "No charge",
-    4: "Dispute",
-    5: "Unknown",
-    6: "Voided trip",
-}
-AIRPORT_ZONES = {1: "Newark (EWR)", 132: "JFK", 138: "LaGuardia"}
+# Days left out of the weather comparison: United States federal holidays plus these
+# two days, on which demand is atypical for reasons unrelated to weather. An analysis choice.
+EXTRA_HOLIDAYS = ["12-24", "12-31"]
 
 # Limits for a plausible trip. Trips outside them are counted by the audit and
 # excluded from the analysis tables. They are analysis choices, not TLC rules.

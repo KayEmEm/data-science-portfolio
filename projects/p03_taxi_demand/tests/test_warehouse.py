@@ -53,7 +53,9 @@ def test_fact_table_preserves_usable_trip_totals(con):
 
 
 def test_demand_index_averages_one_per_weekday_and_month(con):
-    means = con.sql("SELECT avg(demand_index) AS m FROM daily GROUP BY pickup_month, pickup_dow").df()
+    means = con.sql(
+        "SELECT avg(demand_index) AS m FROM daily WHERE NOT is_holiday GROUP BY pickup_month, pickup_dow"
+    ).df()
     assert means["m"].to_numpy() == pytest.approx(1.0)
 
 
@@ -83,3 +85,11 @@ def test_cohorts_start_at_100(con):
 def test_marts_are_exported(built):
     for name in ["fact_hourly", "zone_monthly", "daily", "quality_audit", "zones"]:
         assert (built["marts"] / f"{name}.parquet").exists()
+
+
+def test_holidays_are_flagged(con):
+    flagged = {
+        d.isoformat() for (d,) in con.execute("SELECT pickup_date FROM daily WHERE is_holiday").fetchall()
+    }
+    # The fixture covers January to March: New Year, Martin Luther King Jr. Day, Presidents Day.
+    assert flagged == {"2024-01-01", "2024-01-15", "2024-02-19"}

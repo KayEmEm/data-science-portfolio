@@ -10,6 +10,6 @@ def test_report_writes_tables_numbers_and_figures(built, monkeypatch):
     numbers = json.loads((out / "key_numbers.json").read_text())
     assert 0 < numbers["usable_share"] <= 1
     assert numbers["usable_trips"] <= numbers["source_rows"]
-    assert (out / "query_results.md").read_text().count("## a") == 10
+    assert (out / "query_results.md").read_text().count("## a") == 11
     for name in ["daily_demand", "hour_weekday", "weather_effect", "zone_concentration", "speed_by_hour"]:
         assert (out / "figures" / f"{name}.png").stat().st_size > 0
