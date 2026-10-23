@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Data and run outputs are never committed
+projects/*/data/*
+!projects/*/data/.gitkeep
+projects/*/artifacts/
+mlruns/
+mlflow.db
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+.ipynb_checkpoints/
