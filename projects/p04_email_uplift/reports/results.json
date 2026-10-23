@@ -1,0 +1,101 @@
+{
+  "data": "hillstrom-2008",
+  "n_customers": 64000,
+  "sample_ratio_p": 0.9036929575604196,
+  "effects": {
+    "mens_visit": {
+      "arm": "mens",
+      "outcome": "visit",
+      "treated_mean": 0.18275684047496127,
+      "control_mean": 0.10616727682343002,
+      "effect": 0.07658956365153125,
+      "se": 0.0033858878117283653,
+      "ci_low": 0.06995334548485052,
+      "ci_high": 0.08322578181821197,
+      "relative_lift": 0.721404616781399,
+      "p_value": 1.3644511962742905e-112,
+      "p_holm": 8.186707177645743e-112
+    },
+    "mens_conversion": {
+      "arm": "mens",
+      "outcome": "conversion",
+      "treated_mean": 0.01253109306800582,
+      "control_mean": 0.005726086548390125,
+      "effect": 0.006805006519615695,
+      "se": 0.0009208727857351216,
+      "ci_low": 0.005000129025231786,
+      "ci_high": 0.008609884013999603,
+      "relative_lift": 1.188421876286328,
+      "p_value": 1.50181578515438e-13,
+      "p_holm": 6.00726314061752e-13
+    },
+    "mens_spend": {
+      "arm": "mens",
+      "outcome": "spend",
+      "treated_mean": 1.422616511005773,
+      "control_mean": 0.6527893551112361,
+      "effect": 0.7698271558945368,
+      "se": 0.14524656024868676,
+      "ci_low": 0.48514912892878365,
+      "ci_high": 1.0545051828602898,
+      "relative_lift": 1.1792887703620063,
+      "p_value": 1.163814968225482e-07,
+      "p_holm": 3.491444904676446e-07
+    },
+    "womens_visit": {
+      "arm": "womens",
+      "outcome": "visit",
+      "treated_mean": 0.151400383410483,
+      "control_mean": 0.10616727682343002,
+      "effect": 0.045233106587052985,
+      "se": 0.003234462099090751,
+      "ci_low": 0.03889367736347529,
+      "ci_high": 0.051572535810630676,
+      "relative_lift": 0.4260550702669102,
+      "p_value": 2.4324477023127946e-44,
+      "p_holm": 1.2162238511563973e-43
+    },
+    "womens_conversion": {
+      "arm": "womens",
+      "outcome": "conversion",
+      "treated_mean": 0.008837144059475383,
+      "control_mean": 0.005726086548390125,
+      "effect": 0.003111057511085258,
+      "se": 0.0008226770775551195,
+      "ci_low": 0.0014986400681705587,
+      "ci_high": 0.004723474953999957,
+      "relative_lift": 0.5433130436982172,
+      "p_value": 0.00015602839508556404,
+      "p_holm": 0.0003120567901711281
+    },
+    "womens_spend": {
+      "arm": "womens",
+      "outcome": "spend",
+      "treated_mean": 1.0772015710478329,
+      "control_mean": 0.6527893551112361,
+      "effect": 0.4244122159365967,
+      "se": 0.13033285852919116,
+      "ci_low": 0.16896450721722805,
+      "ci_high": 0.6798599246559653,
+      "relative_lift": 0.6501518638646863,
+      "p_value": 0.0011293971023632495,
+      "p_holm": 0.0011293971023632495
+    }
+  },
+  "selected_model": "t_learner",
+  "selected_policy": "all_mens",
+  "test_policy_values": {
+    "no_email": 0.18757274718397995,
+    "all_mens": 0.3955172090112641,
+    "all_womens": 0.25871976309226935,
+    "category_rule": 0.3391330979107301,
+    "model_t_learner": 0.2875478011401409,
+    "model_x_learner": 0.36749721519105866,
+    "model_causal_forest": 0.3441425328262573,
+    "model_dr_learner_causalml": 0.356018212837743
+  },
+  "economics": {
+    "margin": 0.3,
+    "cost_per_email": 0.1
+  }
+}
