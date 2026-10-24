@@ -204,6 +204,9 @@ def main() -> None:
     settings.update({"mlflow": False})  # runs are logged once, by this module, to the project's own store
     setup_mlflow(args.artifacts)
     summary_path = args.artifacts / "train_summary.json"
+    backup_summary = args.backup / summary_path.name if args.backup else None
+    if not summary_path.exists() and backup_summary is not None and backup_summary.exists():
+        shutil.copy2(backup_summary, summary_path)  # runs that finished before the machine was replaced
     summaries = json.loads(summary_path.read_text()) if summary_path.exists() else {}
     for run in args.runs:
         if run in summaries:
@@ -222,6 +225,9 @@ def main() -> None:
             args.device,
         )
         summary_path.write_text(json.dumps(summaries, indent=2))
+        if backup_summary is not None:
+            backup_summary.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(summary_path, backup_summary)
         print(json.dumps(summaries[run]))
 
 
