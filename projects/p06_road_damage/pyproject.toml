@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "road-damage"
+version = "0.1.0"
+description = "Road damage detection on RDD2022 (Czech and India) with YOLO11n, trained on CPU"
+requires-python = ">=3.11"
+# Ultralytics is AGPL-3.0, and Ultralytics states that code which uses it falls
+# under the same license. This folder is therefore AGPL-3.0, unlike the rest of
+# the repository (MIT). See LICENSE in this folder.
+license = "AGPL-3.0-only"
+dependencies = [
+    "ultralytics==8.4.184",
+    "torch==2.14.1",
+    "onnx==1.23.2",
+    "onnxruntime==1.31.0",
+    "onnxslim==0.1.98",
+    "numpy==2.5.4",
+    "pandas==3.1.0",
+    "pyarrow==25.0.1",
+    "pillow==12.3.0",
+    "pyyaml==6.0.3",
+    "matplotlib==3.11.2",
+    "tabulate==0.10.0",
+    "mlflow==3.17.2",
+]
+
+[project.optional-dependencies]
+demo = ["gradio==6.30.0"]
+dev = ["pytest==9.1.1", "ruff==0.17.2"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
