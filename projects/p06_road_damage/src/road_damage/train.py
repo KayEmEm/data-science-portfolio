@@ -12,10 +12,12 @@ Three runs share the data, image size, seed and number of epochs:
 
 import argparse
 import json
-import time
+import shutil
 from pathlib import Path
 
 import mlflow
+import numpy as np
+import pandas as pd
 from ultralytics import YOLO, settings
 from ultralytics.utils.downloads import attempt_download_asset
 
@@ -64,6 +66,51 @@ def weights_path(artifacts_dir: Path, run: str) -> Path:
     return artifacts_dir / "runs" / run / "weights" / "best.pt"
 
 
+def backup_callback(backup_dir: Path):
+    """An Ultralytics callback that copies the run's checkpoints and history after each epoch.
+
+    The container that trains can be stopped without notice; the copies let a
+    later ``make train`` resume from the last finished epoch.
+    """
+
+    def copy(trainer) -> None:
+        save_dir = Path(trainer.save_dir)
+        target = backup_dir / save_dir.name
+        (target / "weights").mkdir(parents=True, exist_ok=True)
+        for name in ("weights/last.pt", "weights/best.pt", "results.csv", "args.yaml"):
+            if (save_dir / name).exists():
+                partial = target / f"{name}.partial"
+                shutil.copy2(save_dir / name, partial)
+                partial.replace(target / name)  # a stop during the copy never leaves a truncated file
+
+    return copy
+
+
+def restore(run_dir: Path, backup_dir: Path | None) -> None:
+    """Copy a backed up checkpoint into place when the local one is missing or older."""
+    if backup_dir is None:
+        return
+    source = backup_dir / run_dir.name
+    for name in ("weights/last.pt", "weights/best.pt", "results.csv", "args.yaml"):
+        src, dst = source / name, run_dir / name
+        if src.exists() and (not dst.exists() or src.stat().st_mtime > dst.stat().st_mtime):
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+
+
+def train_minutes(run_dir: Path) -> float:
+    """Training time over all sessions of a run, in minutes.
+
+    The ``time`` column of results.csv counts seconds from the start of each
+    session and restarts on resume, so the last value of every session is summed.
+    """
+    history = pd.read_csv(run_dir / "results.csv")
+    history.columns = history.columns.str.strip()
+    seconds = history["time"].to_numpy(dtype=float)
+    session_ends = np.append(seconds[1:] < seconds[:-1], True)
+    return round(float(seconds[session_ends].sum()) / 60, 1)
+
+
 def train_run(
     run: str,
     data_yaml: Path,
@@ -73,29 +120,39 @@ def train_run(
     imgsz: int,
     batch: int,
     workers: int,
+    backup_dir: Path | None = None,
 ) -> dict:
-    """Train one configuration and return its settings, time and last validation scores."""
+    """Train one configuration, or resume it from its last epoch, and return its settings and scores."""
     overrides = RUNS[run]
-    started = time.perf_counter()
-    model = YOLO(resolve_weights(weights, artifacts_dir))
-    result = model.train(
-        data=str(data_yaml),
-        project=str((artifacts_dir / "runs").resolve()),
-        name=run,
-        exist_ok=True,
-        epochs=epochs,
-        patience=PATIENCE,
-        imgsz=imgsz,
-        batch=batch,
-        workers=workers,
-        device="cpu",
-        seed=SEED,
-        deterministic=True,
-        plots=True,
-        verbose=False,
-        **overrides,
-    )
-    minutes = (time.perf_counter() - started) / 60
+    run_dir = artifacts_dir / "runs" / run
+    restore(run_dir, backup_dir)
+    last = run_dir / "weights" / "last.pt"
+    if last.exists():
+        model = YOLO(str(last))
+        if backup_dir is not None:
+            model.add_callback("on_fit_epoch_end", backup_callback(backup_dir))
+        result = model.train(resume=True)
+    else:
+        model = YOLO(resolve_weights(weights, artifacts_dir))
+        if backup_dir is not None:
+            model.add_callback("on_fit_epoch_end", backup_callback(backup_dir))
+        result = model.train(
+            data=str(data_yaml),
+            project=str((artifacts_dir / "runs").resolve()),
+            name=run,
+            exist_ok=True,
+            epochs=epochs,
+            patience=PATIENCE,
+            imgsz=imgsz,
+            batch=batch,
+            workers=workers,
+            device="cpu",
+            seed=SEED,
+            deterministic=True,
+            plots=True,
+            verbose=False,
+            **overrides,
+        )
     summary = {
         "run": run,
         "weights": weights,
@@ -103,7 +160,7 @@ def train_run(
         "imgsz": imgsz,
         "batch": batch,
         "overrides": overrides,
-        "train_minutes": round(minutes, 1),
+        "train_minutes": train_minutes(run_dir),
         "val_map50": float(result.box.map50),
         "val_map50_95": float(result.box.map),
     }
@@ -126,6 +183,9 @@ def main() -> None:
     parser.add_argument("--imgsz", type=int, default=IMAGE_SIZE)
     parser.add_argument("--batch", type=int, default=BATCH)
     parser.add_argument("--workers", type=int, default=WORKERS)
+    parser.add_argument(
+        "--backup", type=Path, default=None, help="folder for a copy of each run after each epoch"
+    )
     args = parser.parse_args()
 
     args.artifacts.mkdir(parents=True, exist_ok=True)
@@ -134,8 +194,19 @@ def main() -> None:
     summary_path = args.artifacts / "train_summary.json"
     summaries = json.loads(summary_path.read_text()) if summary_path.exists() else {}
     for run in args.runs:
+        if run in summaries:
+            print(f"skipped {run}: finished earlier (see {summary_path})")
+            continue
         summaries[run] = train_run(
-            run, args.data, args.artifacts, args.weights, args.epochs, args.imgsz, args.batch, args.workers
+            run,
+            args.data,
+            args.artifacts,
+            args.weights,
+            args.epochs,
+            args.imgsz,
+            args.batch,
+            args.workers,
+            args.backup,
         )
         summary_path.write_text(json.dumps(summaries, indent=2))
         print(json.dumps(summaries[run]))

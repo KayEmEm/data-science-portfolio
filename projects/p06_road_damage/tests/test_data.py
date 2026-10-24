@@ -85,3 +85,12 @@ def test_build_writes_an_ultralytics_dataset(data_dir):
     assert {"Czech", "India"} <= subsets <= {"Czech", "India", "dark", "medium", "bright"}
     images = pd.read_parquet(data_dir / "images.parquet")
     assert set(images["lighting"]) == {"dark", "medium", "bright"}
+
+
+def test_train_minutes_sums_resumed_sessions(tmp_path):
+    from road_damage.train import train_minutes
+
+    pd.DataFrame({"epoch": [1, 2, 3, 4], "time": [60.0, 120.0, 30.0, 90.0]}).to_csv(
+        tmp_path / "results.csv", index=False
+    )
+    assert train_minutes(tmp_path) == 3.5  # 120 s before the resume, 90 s after

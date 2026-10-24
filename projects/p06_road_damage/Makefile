@@ -1,6 +1,7 @@
 # Project 6: road damage detection on RDD2022. Run from this folder.
 PYTHON ?= python
 SOURCE ?= data/raw
+BACKUP ?=
 SMOKE_DIR := artifacts/smoke
 
 .PHONY: install data train evaluate export report all demo smoke test lint clean
@@ -11,8 +12,8 @@ install:             ## this project with the demo extra and the shared common p
 data:                ## RDD2022_Czech.zip and RDD2022_India.zip in $(SOURCE) -> audit tables and a YOLO dataset
 	$(PYTHON) -m road_damage.data --source $(SOURCE)
 
-train:               ## three runs of YOLO11n on CPU: frozen backbone, full fine tune, light augmentation
-	$(PYTHON) -m road_damage.train
+train:               ## three runs of YOLO11n on CPU; resumes a stopped run; BACKUP=<folder> copies each epoch there
+	$(PYTHON) -m road_damage.train $(if $(BACKUP),--backup $(BACKUP))
 
 evaluate:            ## test split mAP per run, per class, per country and per lighting bin; ONNX export and CPU speed
 	$(PYTHON) -m road_damage.evaluate
