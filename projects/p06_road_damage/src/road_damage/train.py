@@ -12,12 +12,14 @@ Three runs share the data, image size, seed and number of epochs:
 
 import argparse
 import json
+import os
 import shutil
 from pathlib import Path
 
 import mlflow
 import numpy as np
 import pandas as pd
+import torch
 from ultralytics import YOLO, settings
 from ultralytics.utils.downloads import attempt_download_asset
 
@@ -111,6 +113,13 @@ def train_minutes(run_dir: Path) -> float:
     return round(float(seconds[session_ends].sum()) / 60, 1)
 
 
+def device_name(device: str) -> str:
+    """The processor a run trained on, for the README and the model card."""
+    if device == "cpu":
+        return f"CPU, {os.cpu_count()} cores"
+    return f"GPU, {torch.cuda.get_device_name(int(device))}"
+
+
 def train_run(
     run: str,
     data_yaml: Path,
@@ -121,6 +130,7 @@ def train_run(
     batch: int,
     workers: int,
     backup_dir: Path | None = None,
+    device: str = "cpu",
 ) -> dict:
     """Train one configuration, or resume it from its last epoch, and return its settings and scores."""
     overrides = RUNS[run]
@@ -146,7 +156,7 @@ def train_run(
             imgsz=imgsz,
             batch=batch,
             workers=workers,
-            device="cpu",
+            device=device,
             seed=SEED,
             deterministic=True,
             plots=True,
@@ -159,6 +169,7 @@ def train_run(
         "epochs": epochs,
         "imgsz": imgsz,
         "batch": batch,
+        "device": device_name(device),
         "overrides": overrides,
         "train_minutes": train_minutes(run_dir),
         "val_map50": float(result.box.map50),
@@ -183,6 +194,7 @@ def main() -> None:
     parser.add_argument("--imgsz", type=int, default=IMAGE_SIZE)
     parser.add_argument("--batch", type=int, default=BATCH)
     parser.add_argument("--workers", type=int, default=WORKERS)
+    parser.add_argument("--device", default="cpu", help="cpu, or a CUDA device index such as 0")
     parser.add_argument(
         "--backup", type=Path, default=None, help="folder for a copy of each run after each epoch"
     )
@@ -207,6 +219,7 @@ def main() -> None:
             args.batch,
             args.workers,
             args.backup,
+            args.device,
         )
         summary_path.write_text(json.dumps(summaries, indent=2))
         print(json.dumps(summaries[run]))
