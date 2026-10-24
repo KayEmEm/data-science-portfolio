@@ -19,6 +19,7 @@ jobs:
       p04: ${{ steps.filter.outputs.p04 }}
       p05: ${{ steps.filter.outputs.p05 }}
       p06: ${{ steps.filter.outputs.p06 }}
+      p07: ${{ steps.filter.outputs.p07 }}
     steps:
       - uses: actions/checkout@v4
       - id: filter
@@ -51,6 +52,10 @@ jobs:
             p06:
               - 'common/**'
               - 'projects/p06_road_damage/**'
+              - '.github/workflows/**'
+            p07:
+              - 'common/**'
+              - 'projects/p07_movie_recommender/**'
               - '.github/workflows/**'
 
   common:
@@ -191,4 +196,26 @@ jobs:
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on synthetic zips (untrained weights, no data download)
+        run: make smoke
+
+  p07_movie_recommender:
+    needs: changes
+    if: needs.changes.outputs.p07 == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/p07_movie_recommender
+    env:
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # The CPU build of PyTorch first, so that the project install does not pull the CUDA build (several GB).
+      - run: python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install -e ../../common -e ".[dev]"
+      - run: make lint
+      - run: make test
+      - name: Smoke run of the full pipeline on a synthetic archive (no download)
         run: make smoke
