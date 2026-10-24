@@ -22,7 +22,7 @@ import pandas as pd
 from sklearn.preprocessing import QuantileTransformer, RobustScaler, StandardScaler
 
 from customer_segments.categories import CATEGORIES
-from customer_segments.config import BEHAVIOR, LOG_FEATURES, MIX_WEIGHT, OUTCOME_DAYS, RFM
+from customer_segments.config import BEHAVIOR, CLUSTER_BEHAVIOR, LOG_FEATURES, MIX_WEIGHT, OUTCOME_DAYS, RFM
 
 SHARES = [f"share_{c}" for c in CATEGORIES]
 
@@ -99,12 +99,16 @@ def scaled_block(frame: pd.DataFrame, scaling: str) -> np.ndarray:
 
 
 def matrix(table: pd.DataFrame, feature_set: str, scaling: str) -> np.ndarray:
-    """The clustering input: the behavior block, and for ``rfm_mix`` the weighted category block."""
+    """The clustering input: the behavior block, and for the mix sets the weighted category block.
+
+    ``rfm_mix`` uses the behavior features without ``return_share``; ``rfm_mix_returns`` uses all.
+    """
     if feature_set == "rfm":
         return scaled_block(table[RFM], scaling)
-    if feature_set != "rfm_mix":
+    if feature_set not in ("rfm_mix", "rfm_mix_returns"):
         raise ValueError(f"unknown feature set {feature_set}")
-    behavior = scaled_block(table[BEHAVIOR], scaling)
+    columns = BEHAVIOR if feature_set == "rfm_mix_returns" else CLUSTER_BEHAVIOR
+    behavior = scaled_block(table[columns], scaling)
     shares = table[SHARES].to_numpy(dtype=float)
     shares = shares[:, shares.std(axis=0) > 0]
     mix = StandardScaler().fit_transform(shares)

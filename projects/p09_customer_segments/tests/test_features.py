@@ -33,8 +33,9 @@ def test_matrices(lines):
     rfm = matrix(table, "rfm", "standard")
     assert rfm.shape == (len(table), 3)
     assert np.allclose(rfm.mean(axis=0), 0, atol=1e-9)
-    mix = matrix(table, "rfm_mix", "robust")
+    mix = matrix(table, "rfm_mix_returns", "robust")
     behavior = mix[:, : len(BEHAVIOR)].var(axis=0).sum()
     assert np.isclose(mix[:, len(BEHAVIOR) :].var(axis=0).sum(), 0.5 * behavior)
+    assert matrix(table, "rfm_mix", "robust").shape[1] == mix.shape[1] - 1
     for scaling in ("raw", "quantile"):
         assert np.isfinite(matrix(table, "rfm_mix", scaling)).all()

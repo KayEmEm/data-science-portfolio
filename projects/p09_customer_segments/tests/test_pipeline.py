@@ -27,12 +27,20 @@ def test_end_to_end_on_synthetic_lines(csv_folder, tmp_path):
     selection = json.loads((artifacts / "evaluation" / "selection.json").read_text())
     assert 3 <= selection["k"] <= 5
     comparison = pd.read_csv(artifacts / "evaluation" / "comparison.csv").set_index("segmentation")
-    assert set(comparison.index) == {"kmeans_rfm_mix", "kmeans_rfm", "hdbscan", "rfm_grid"}
+    assert set(comparison.index) == {
+        "kmeans_rfm_mix",
+        "kmeans_first_attempt",
+        "kmeans_rfm",
+        "hdbscan",
+        "rfm_grid",
+    }
     # The synthetic types differ in how often they buy, so every segmentation explains some of it.
     assert (comparison["eta2_purchase"] > 0).all()
     profiles = pd.read_csv(artifacts / "evaluation" / "profiles.csv")
     assert profiles["customers"].sum() == selection["customers"]
     assert profiles["spend_share"].is_monotonic_decreasing
+    ablation = pd.read_csv(artifacts / "evaluation" / "profiles_first_attempt.csv")
+    assert ablation["customers"].sum() == selection["customers"]
     assert len(list((reports / "figures").glob("*.png"))) == 5
     html = (reports / "segment_map.html").read_text()
     assert "Segment 1" in html and "customer_id" not in html

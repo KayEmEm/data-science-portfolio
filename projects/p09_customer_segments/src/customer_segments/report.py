@@ -25,10 +25,27 @@ DIVERGING = LinearSegmentedColormap.from_list("blue_gray_red", ["#2a78d6", "#f0e
 SYMBOLS = ["circle", "square", "diamond", "triangle-up", "cross", "x", "triangle-down", "star"]
 NAMES = {
     "kmeans_rfm_mix": "k means, RFM and product mix (selected)",
+    "kmeans_first_attempt": "k means, first attempt with return share",
     "kmeans_rfm": "k means, RFM only",
     "hdbscan": "HDBSCAN, RFM and product mix",
     "rfm_grid": "RFM grid, ten rule segments (baseline)",
 }
+PROFILE_COLUMNS = [
+    "segment",
+    "customers",
+    "customer_share",
+    "spend_share",
+    "median_recency_days",
+    "median_frequency",
+    "median_monetary",
+    "median_mean_basket",
+    "mean_return_share",
+    "top_categories",
+    "future_purchase_rate",
+    "future_spend_mean",
+    "future_spend_share",
+    "jaccard",
+]
 PROFILE_FEATURES = {
     "median_recency_days": "Recency (days)",
     "median_frequency": "Orders",
@@ -221,6 +238,7 @@ def results_markdown(
     sel: dict,
     comparison: pd.DataFrame,
     profiles: pd.DataFrame,
+    ablation: pd.DataFrame,
     density: pd.DataFrame,
     grid: pd.DataFrame,
     stab: pd.DataFrame,
@@ -241,28 +259,21 @@ def results_markdown(
             "purchase_rate_max",
         ]
     ]
-    prof = profiles[
-        [
-            "segment",
-            "customers",
-            "customer_share",
-            "spend_share",
-            "median_recency_days",
-            "median_frequency",
-            "median_monetary",
-            "median_mean_basket",
-            "mean_return_share",
-            "top_categories",
-            "future_purchase_rate",
-            "future_spend_mean",
-            "future_spend_share",
-            "jaccard",
-        ]
-    ]
+    prof = profiles[PROFILE_COLUMNS]
+    prof_ablation = ablation[PROFILE_COLUMNS]
     kgrid = grid.merge(stab, on=["feature_set", "scaling", "k"])
     kgrid = kgrid.loc[
-        kgrid["feature_set"] == "rfm_mix",
-        ["scaling", "k", "silhouette", "davies_bouldin", "min_share", "stability_ari", "stability_ari_p05"],
+        kgrid["feature_set"] != "rfm",
+        [
+            "feature_set",
+            "scaling",
+            "k",
+            "silhouette",
+            "davies_bouldin",
+            "min_share",
+            "stability_ari",
+            "stability_ari_p05",
+        ],
     ]
     dens = density[["scaling", "method", "segments", "noise_share", "silhouette"]]
     candidates = ", ".join(f"{c['scaling']} k={c['k']}" for c in sel["candidates"]) or "none"
@@ -296,6 +307,11 @@ def results_markdown(
         f"* Mean stability over the k range by scaling: {sel['mean_stability_by_scaling']}.",
         f"* Gap statistic choice by scaling (None: no k in the range meets the rule): {sel['gap_choice']}.",
         f"* RFM only: {sel['rfm_only']['scaling']} scaling, k = {sel['rfm_only']['k']}.",
+        f"* First attempt with return share: {sel['first_attempt']['scaling']} scaling,"
+        f" k = {sel['first_attempt']['k']}"
+        f" ({sel['first_attempt']['rule']}): silhouette {sel['first_attempt']['silhouette']:.3f},"
+        f" bootstrap stability {sel['first_attempt']['stability_ari']:.3f},"
+        f" smallest segment {sel['first_attempt']['min_share']:.1%}.",
         f"* HDBSCAN setting compared: `{sel['hdbscan']}`.",
         "",
         "## Next quarter check",
@@ -312,7 +328,11 @@ def results_markdown(
         "Segments are numbered by their share of net spend before the cutoff. `jaccard`: mean overlap of the"
         " segment with its best match over bootstrap refits (above 0.75 is usually read as stable).",
         "",
-        "## k means grid (RFM and product mix)",
+        "## Segment profiles of the first attempt with return share",
+        "",
+        table_md(prof_ablation, ".2f"),
+        "",
+        "## k means grid",
         "",
         table_md(kgrid),
         "",
@@ -336,6 +356,7 @@ def run(data_dir: Path, artifacts: Path, reports: Path, data_label: str) -> None
     segments = pd.read_parquet(ev / "segments.parquet")
     comparison = pd.read_csv(ev / "comparison.csv")
     profiles = pd.read_csv(ev / "profiles.csv")
+    ablation = pd.read_csv(ev / "profiles_first_attempt.csv")
     grid = pd.read_csv(artifacts / "kmeans_grid.csv")
     stab = pd.read_csv(artifacts / "stability.csv")
     gap = pd.read_csv(artifacts / "gap.csv")
@@ -349,7 +370,7 @@ def run(data_dir: Path, artifacts: Path, reports: Path, data_label: str) -> None
     interactive_map(table, segments, reports / "segment_map.html")
 
     (reports / "results.md").write_text(
-        results_markdown(audit, info, sel, comparison, profiles, density, grid, stab, data_label)
+        results_markdown(audit, info, sel, comparison, profiles, ablation, density, grid, stab, data_label)
     )
     results = {
         "data": data_label,
@@ -358,6 +379,7 @@ def run(data_dir: Path, artifacts: Path, reports: Path, data_label: str) -> None
         "selection": sel,
         "comparison": comparison.round(4).to_dict("records"),
         "profiles": profiles.round(4).to_dict("records"),
+        "profiles_first_attempt": ablation.round(4).to_dict("records"),
         "categories": CATEGORIES,
     }
     (reports / "results.json").write_text(json.dumps(results, indent=2, default=str))

@@ -9,13 +9,17 @@ silhouette is selected. The same rule picks k for the ``rfm`` features. The HDBS
 selected scaling with the highest silhouette among those with at most ``MAX_NOISE`` noise is kept for
 the comparison.
 
+The same rule picks the first attempt with ``return_share`` (``rfm_mix_returns``), which was the
+main feature set before the results of the first run changed it (see ``config.py``).
+
 Check on the next quarter, which no clustering saw: how much of the variance of log future spend
 and of the future purchase indicator the segment means explain (adjusted eta squared, with 95
-percent bootstrap intervals over customers), for the selected k means, k means on RFM only, HDBSCAN,
-and the rule based RFM grid.
+percent bootstrap intervals over customers), for the selected k means, the ablation, k means on RFM
+only, HDBSCAN, and the rule based RFM grid.
 
 Outputs under ``artifacts/evaluation/``: ``selection.json``, ``comparison.csv``, ``profiles.csv``,
-``segments.parquet`` (segment and map position of every customer), ``jaccard.csv``.
+``profiles_first_attempt.csv``, ``segments.parquet`` (segments and map position of every customer),
+``jaccard.csv``.
 """
 
 import argparse
@@ -179,13 +183,17 @@ def run(artifacts: Path, quick: bool) -> None:
         sc: clustering.gap_choice(gap.loc[(gap["feature_set"] == "rfm_mix") & (gap["scaling"] == sc)])
         for sc in sorted(gap["scaling"].unique())
     }
-    selection["rfm_only"] = {k: rfm_only[k] for k in ("scaling", "k", "silhouette", "stability_ari")}
+    first = select(candidates(grid, stab, "rfm_mix_returns", ks))
+    keys = ("scaling", "k", "rule", "silhouette", "stability_ari", "min_share")
+    selection["rfm_only"] = {k: rfm_only[k] for k in keys}
+    selection["first_attempt"] = {k: first[k] for k in keys}
     density_name = pick_density(density, selection["scaling"])
     selection["hdbscan"] = density_name
 
     chosen = kmeans_name("rfm_mix", selection["scaling"], selection["k"])
     compared = {
         "kmeans_rfm_mix": chosen,
+        "kmeans_first_attempt": kmeans_name("rfm_mix_returns", first["scaling"], first["k"]),
         "kmeans_rfm": kmeans_name("rfm", rfm_only["scaling"], rfm_only["k"]),
         "hdbscan": density_name,
         "rfm_grid": "rfm_grid",
@@ -217,8 +225,17 @@ def run(artifacts: Path, quick: bool) -> None:
         {"segment": segment, "umap_x": embedding[:, 0], "umap_y": embedding[:, 1]}, index=table.index
     )
     segments["rfm_grid"] = labels["rfm_grid"].to_numpy()
-    segments.to_parquet(out_dir / "segments.parquet")
     profiles(table, segment).merge(jaccard, on="segment").to_csv(out_dir / "profiles.csv", index=False)
+
+    # The first attempt with return share, profiled the same way.
+    x_first = matrix(table, "rfm_mix_returns", first["scaling"])
+    first_segment = order_segments(table, labels[compared["kmeans_first_attempt"]].to_numpy())
+    segments["segment_first_attempt"] = first_segment
+    segments.to_parquet(out_dir / "segments.parquet")
+    jaccard_first = per_segment_jaccard(x_first, first_segment, first["k"], fits)
+    profiles(table, first_segment).merge(jaccard_first, on="segment").to_csv(
+        out_dir / "profiles_first_attempt.csv", index=False
+    )
 
     selection["column"] = chosen
     selection["customers"] = len(table)

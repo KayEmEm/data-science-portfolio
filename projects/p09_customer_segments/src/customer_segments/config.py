@@ -73,7 +73,12 @@ RFM = ["recency_days", "frequency", "monetary"]
 MIX_WEIGHT = 0.5
 
 SCALINGS = ["raw", "standard", "robust", "quantile"]
-FEATURE_SETS = ["rfm", "rfm_mix"]
+# ``rfm_mix`` is the main feature set: the behavior features without ``return_share`` and the
+# product mix. ``rfm_mix_returns`` adds ``return_share``; it was the main set of the first run on the
+# UCI data, where the quantile scaling turned the zeros of ``return_share`` (most customers) into a
+# gap that k means split on. The main set was changed after that run and the first one is reported.
+FEATURE_SETS = ["rfm", "rfm_mix", "rfm_mix_returns"]
+CLUSTER_BEHAVIOR = [c for c in BEHAVIOR if c != "return_share"]
 K_RANGE = list(range(2, 11))
 KMEANS_INIT = 10
 GAP_REFERENCES = 20
