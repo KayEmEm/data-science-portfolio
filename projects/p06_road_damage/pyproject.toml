@@ -14,6 +14,7 @@ license = "AGPL-3.0-only"
 dependencies = [
     "ultralytics==8.4.184",
     "torch==2.14.1",
+    "torchvision==0.29.1",
     "onnx==1.23.2",
     "onnxruntime==1.31.0",
     "onnxslim==0.1.98",
