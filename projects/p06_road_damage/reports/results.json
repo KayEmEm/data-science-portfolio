@@ -1,0 +1,16 @@
+{
+  "data": {
+    "images": 10535,
+    "images_per_country": {
+      "Czech": 2829,
+      "India": 7706
+    },
+    "boxes_scored": 8576,
+    "boxes_dropped_other_labels": 1372,
+    "share_images_without_damage": {
+      "Czech": 0.621,
+      "India": 0.582
+    },
+    "xml_size_mismatches": 0
+  }
+}
