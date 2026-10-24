@@ -10,6 +10,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 | 4 | [Email campaign uplift](projects/p04_email_uplift) | Experimentation and causal inference | complete | mens email: +$0.77 spend per customer (95% CI 0.49 to 1.05); mailing everyone beats four uplift model policies; observational estimate without past spend is biased by +2.0 pp |
 | 5 | [Retail demand forecasting](projects/p05_retail_forecasting) | Time series forecasting | complete | M5 test WRMSSE 0.562 with a global LightGBM model (seasonal naive 0.847); 95% intervals cover 94.1% of item x store days |
 | 6 | [Road damage detection](projects/p06_road_damage) | Computer vision | complete | RDD2022 Czech and India test mAP50 0.288 with YOLO11n (frozen backbone baseline 0.214); ONNX 26.6 ms per image on CPU |
+| 7 | [Movie recommendations](projects/p07_movie_recommender) | Recommendation and ranking | complete | MovieLens 32M test NDCG at 10 0.134 with ALS and two tower candidates and a LightGBM ranker (90 day popularity baseline 0.095) |
 
 ## Shared conventions
 
@@ -31,6 +32,7 @@ projects/
   p04_email_uplift/
   p05_retail_forecasting/
   p06_road_damage/      AGPL-3.0, because it uses Ultralytics YOLO
+  p07_movie_recommender/
 .github/workflows/      one CI workflow
 ```
 

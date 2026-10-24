@@ -31,6 +31,7 @@ LABELS = {
     "popularity": "Popularity, all time (baseline)",
 }
 INK = "#0b0b0b"
+TITLES = {"recall": "Recall", "ndcg": "NDCG", "coverage": "Coverage", "novelty": "Novelty"}
 DEMO_USERS = 3
 
 
@@ -47,10 +48,10 @@ def metrics_figure(summary: pd.DataFrame, path: Path) -> None:
         ax.barh(y, test[metric], color=colors, height=0.6)
         for yi, value in zip(y, test[metric], strict=True):
             ax.text(value, yi, f" {value:.3f}", va="center", fontsize=8, color=INK)
-        ax.set_title(f"Test {metric.replace('@', ' at ')}")
+        ax.set_title(TITLES[metric.split("@")[0]] + f" at {K}", loc="left")
         ax.set_xlim(0, test[metric].max() * 1.25)
     axes[0].set_yticks(y, [LABELS.get(m, m) for m in test.index])
-    fig.suptitle("Top 10 recommendations, test window", x=0.02, ha="left")
+    fig.suptitle("Top 10 recommendations, test window", x=0.02, y=1.04, ha="left")
     fig.savefig(path)
     plt.close(fig)
 
@@ -63,12 +64,12 @@ def tradeoff_figure(summary: pd.DataFrame, path: Path) -> None:
             ax.scatter(
                 row[metric], row[f"ndcg@{K}"], color=COLORS.get(model, INK), s=60, label=LABELS.get(model)
             )
-        ax.set_xlabel(metric.replace("@", " at "))
+        ax.set_xlabel(TITLES[metric.split("@")[0]] + f" at {K}")
         ax.set_ylabel(f"NDCG at {K}")
     axes[0].set_title("Catalog coverage", loc="left")
     axes[1].set_title("Novelty (mean bits of self information)", loc="left")
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=2, fontsize=8, bbox_to_anchor=(0.5, -0.12))
+    fig.legend(handles, labels, loc="lower center", ncol=2, fontsize=8, bbox_to_anchor=(0.5, -0.2))
     fig.savefig(path)
     plt.close(fig)
 
