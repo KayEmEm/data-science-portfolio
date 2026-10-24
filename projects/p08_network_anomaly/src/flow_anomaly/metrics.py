@@ -2,7 +2,7 @@
 bootstrap intervals."""
 
 import numpy as np
-from sklearn.metrics import average_precision_score, roc_auc_score
+from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve
 
 
 def threshold_at_fpr(normal_scores: np.ndarray, fpr: float) -> float:
@@ -27,25 +27,47 @@ def precision_at_k(y: np.ndarray, scores: np.ndarray, k: int) -> float:
     return float(y[top].mean())
 
 
-def ranking(y: np.ndarray, scores: np.ndarray) -> dict[str, float]:
-    return {
+def pr_auc_at_prevalence(y: np.ndarray, scores: np.ndarray, prevalence: float) -> float:
+    """Average precision that the same ranking would reach if attacks made up ``prevalence`` of the flows.
+
+    Recall and false alarm rate do not depend on the attack share, so the precision at each threshold
+    is recomputed from them as recall * p / (recall * p + fpr * (1 - p)).
+    """
+    fpr, tpr, _ = roc_curve(y, scores, drop_intermediate=False)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        precision = tpr * prevalence / (tpr * prevalence + fpr * (1 - prevalence))
+    precision = np.nan_to_num(precision, nan=1.0)
+    return float(np.sum(np.diff(tpr) * precision[1:]))
+
+
+def ranking(y: np.ndarray, scores: np.ndarray, prevalence: float | None = None) -> dict[str, float]:
+    out = {
         "roc_auc": float(roc_auc_score(y, scores)),
         "pr_auc": float(average_precision_score(y, scores)),
     }
+    if prevalence is not None:
+        out["pr_auc_rescaled"] = pr_auc_at_prevalence(y, scores, prevalence)
+    return out
 
 
 def bootstrap(
-    y: np.ndarray, scores: np.ndarray, threshold: float, n: int, seed: int
+    y: np.ndarray, scores: np.ndarray, threshold: float, n: int, seed: int, prevalence: float | None = None
 ) -> dict[str, tuple[float, float]]:
-    """95 percent percentile intervals of PR AUC and recall at the threshold over resampled flows."""
+    """95 percent percentile intervals of PR AUC (also rescaled to ``prevalence``) and recall at the
+    threshold over resampled flows."""
     rng = np.random.default_rng(seed)
-    pr, recall = [], []
+    pr, rescaled, recall = [], [], []
     for _ in range(n):
         rows = rng.integers(0, len(y), len(y))
         yb, sb = y[rows], scores[rows]
         pr.append(average_precision_score(yb, sb))
+        if prevalence is not None:
+            rescaled.append(pr_auc_at_prevalence(yb, sb, prevalence))
         recall.append((sb[yb == 1] > threshold).mean())
-    return {
+    out = {
         "pr_auc": tuple(np.percentile(pr, [2.5, 97.5]).tolist()),
         "recall": tuple(np.percentile(recall, [2.5, 97.5]).tolist()),
     }
+    if prevalence is not None:
+        out["pr_auc_rescaled"] = tuple(np.percentile(rescaled, [2.5, 97.5]).tolist())
+    return out

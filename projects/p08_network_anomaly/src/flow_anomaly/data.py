@@ -107,7 +107,7 @@ def read_full(source: Path) -> pd.DataFrame:
 def read_partition(source: Path) -> pd.DataFrame:
     parts = []
     for role, name in PARTITION_FILES.items():
-        part = pd.read_csv(source / name, low_memory=False, encoding="latin-1")
+        part = pd.read_csv(source / name, low_memory=False, encoding="utf-8-sig")
         part.columns = [normalize_name(c) for c in part.columns]
         part["source_file"] = name
         part["source_role"] = role
@@ -192,6 +192,10 @@ def assign_split(flows: pd.DataFrame, layout: str, seed: int = SEED) -> pd.Serie
 
 
 def audit(flows: pd.DataFrame, layout: str, issues: dict) -> dict:
+    features = NUMERIC + CATEGORICAL + ["label"]
+    split = flows["split"].to_numpy()
+    seen = pd.MultiIndex.from_frame(flows.loc[split == "train", features])
+    test_in_train = pd.MultiIndex.from_frame(flows.loc[split == "test", features]).isin(seen).sum()
     counts = (
         flows.groupby(["attack_cat", "split"]).size().unstack("split", fill_value=0).reindex(columns=SPLITS)
     )
@@ -204,7 +208,8 @@ def audit(flows: pd.DataFrame, layout: str, issues: dict) -> dict:
         "rows": len(flows),
         "attacks": int(flows["label"].sum()),
         "attack_share": round(float(flows["label"].mean()), 5),
-        "duplicate_rows": int(flows.drop(columns=["source_file"]).duplicated().sum()),
+        "duplicate_rows": int(flows[features].duplicated().sum()),
+        "test_rows_also_in_train": int(test_in_train),
         "counts_found": found,
         "counts_documented": documented,
         "counts_match_documented": found == documented,

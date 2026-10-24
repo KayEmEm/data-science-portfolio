@@ -1,6 +1,14 @@
 import numpy as np
+from sklearn.metrics import average_precision_score
 
-from flow_anomaly.metrics import at_threshold, bootstrap, precision_at_k, ranking, threshold_at_fpr
+from flow_anomaly.metrics import (
+    at_threshold,
+    bootstrap,
+    pr_auc_at_prevalence,
+    precision_at_k,
+    ranking,
+    threshold_at_fpr,
+)
 
 
 def test_threshold_flags_the_target_share_of_normal_flows():
@@ -35,3 +43,12 @@ def test_bootstrap_interval_contains_the_estimate():
     out = bootstrap(y, scores, 0.5, 50, seed=0)
     estimate = ranking(y, scores)["pr_auc"]
     assert out["pr_auc"][0] < estimate < out["pr_auc"][1]
+
+
+def test_rescaled_pr_auc_matches_average_precision_at_the_observed_share():
+    rng = np.random.default_rng(1)
+    y = (rng.random(5000) < 0.3).astype(int)
+    scores = y * 0.8 + rng.normal(0, 1, 5000)
+    observed = pr_auc_at_prevalence(y, scores, y.mean())
+    assert np.isclose(observed, average_precision_score(y, scores), atol=1e-9)
+    assert pr_auc_at_prevalence(y, scores, 0.01) < observed

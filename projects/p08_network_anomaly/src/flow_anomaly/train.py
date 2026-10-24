@@ -3,7 +3,8 @@
 Experiments:
 
 * ``main``: all detectors on a training sample with 1 percent attacks, all features;
-* ``contamination_<share>``: Isolation Forest and the autoencoder on samples with other attack shares;
+* ``contamination_<share>_seed<seed>``: Isolation Forest and the autoencoder on samples with attack
+  shares of 0, 1, 5 and 20 percent, each drawn and fitted with three seeds;
 * ``no_ttl``: four detectors without the time to live features (an ablation).
 
 Every finished detector is stored under ``artifacts/<experiment>/`` and skipped when the command
@@ -22,6 +23,7 @@ import pandas as pd
 from flow_anomaly import detectors
 from flow_anomaly.config import (
     ARTIFACTS_DIR,
+    CONTAMINATION_SEEDS,
     CONTAMINATION_SHARES,
     DATA_DIR,
     FIT_ROWS,
@@ -53,12 +55,15 @@ def experiments() -> dict[str, dict]:
         }
     }
     for share in CONTAMINATION_SHARES:
-        if share != TRAIN_ATTACK_SHARE:
-            out[contamination_name(share)] = {
-                "attack_share": share,
-                "numeric": list(NUMERIC),
-                "detectors": ["iforest", "autoencoder"],
-            }
+        for seed in CONTAMINATION_SEEDS:
+            name = contamination_name(share, seed)
+            if name != "main":
+                out[name] = {
+                    "attack_share": share,
+                    "seed": seed,
+                    "numeric": list(NUMERIC),
+                    "detectors": ["iforest", "autoencoder"],
+                }
     out["no_ttl"] = {
         "attack_share": TRAIN_ATTACK_SHARE,
         "numeric": [c for c in NUMERIC if c not in TTL_FEATURES],
@@ -67,8 +72,10 @@ def experiments() -> dict[str, dict]:
     return out
 
 
-def contamination_name(share: float) -> str:
-    return "main" if share == TRAIN_ATTACK_SHARE else f"contamination_{share:g}"
+def contamination_name(share: float, seed: int) -> str:
+    if share == TRAIN_ATTACK_SHARE and seed == SEED:
+        return "main"
+    return f"contamination_{share:g}_seed{seed}"
 
 
 def fit_sample(flows: pd.DataFrame, share: float, rows: int, seed: int) -> np.ndarray:
@@ -123,11 +130,12 @@ def run_experiment(
     (out / "scores").mkdir(parents=True, exist_ok=True)
     (out / "models").mkdir(parents=True, exist_ok=True)
     timer = Timer(out / "timings.json")
+    seed = setup.get("seed", SEED)
     sample_path = out / "fit_rows.npy"
     if sample_path.exists() and not force:
         sample = np.load(sample_path)
     else:
-        sample = fit_sample(flows, setup["attack_share"], fit_rows, SEED)
+        sample = fit_sample(flows, setup["attack_share"], fit_rows, seed)
         np.save(sample_path, sample)
     prep_path = out / "preprocessor.joblib"
     if prep_path.exists() and not force:
@@ -179,7 +187,7 @@ def run_experiment(
                 if detectors.SPECS[detector].sample == "neighbor"
                 else matrices["fit"]
             )
-            model = detectors.make(detector, forest, ae, out / "models", fitted).fit(x_fit)
+            model = detectors.make(detector, forest, ae, out / "models", fitted, seed).fit(x_fit)
         joblib.dump(model, model_path)
         timer.record(f"{detector}_fit", time.perf_counter() - start)
         fitted[detector] = model

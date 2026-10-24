@@ -87,9 +87,13 @@ PARTITION_VALIDATION_SHARE = 0.2
 # to build this sample and to score the detectors.
 TRAIN_ATTACK_SHARE = 0.01
 CONTAMINATION_SHARES = [0.0, 0.01, 0.05, 0.2]  # study: how attacks in the training sample hurt
+CONTAMINATION_SEEDS = [42, 43, 44]  # each share is drawn and fitted three times
 FIT_ROWS = 200_000  # rows of the training sample for most detectors
 NEIGHBOR_ROWS = 20_000  # rows for the neighbor based detectors (cost grows with the square)
 SUPERVISED_ROWS = 400_000
+# The test splits hold many more attacks than a monitored network would see, which inflates PR AUC.
+# PR AUC is therefore also reported as if attacks made up this share of the flows.
+RESCALED_PREVALENCE = 0.01
 TARGET_FPR = 0.01  # alarm threshold: 1 percent of normal validation flows flagged
 ALERT_BUDGETS = [100, 1000]  # precision of the top k test alerts
 BOOTSTRAP = 200
@@ -99,7 +103,7 @@ BOOTSTRAP = 200
 class AutoencoderSettings:
     hidden: tuple[int, ...] = (64, 32)
     code: int = 8
-    epochs: int = 40
+    epochs: int = 150
     patience: int = 5
     batch_size: int = 1024
     lr: float = 1e-3

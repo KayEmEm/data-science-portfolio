@@ -6,11 +6,13 @@ threshold uses no labels at all: the score above which 1 percent of the training
 
 Outputs under ``artifacts/evaluation/``:
 
-* ``summary.csv``: per experiment and detector, validation PR AUC, test ROC AUC and PR AUC, recall,
+* ``summary.csv``: per experiment and detector, validation and test PR AUC (as observed and rescaled to
+  1 percent attacks), test ROC AUC, recall,
   false alarm rate and precision at the threshold, precision of the top 100 and 1000 alerts, and the
   same at the label free threshold; 95 percent intervals for the main experiment;
 * ``by_type.csv``: test recall at the threshold per attack type (main experiment);
-* ``selection.json``: the unsupervised detector with the best validation PR AUC.
+* ``selection.json``: the unsupervised detector with the best validation PR AUC, rescaled to 1 percent
+  attacks.
 """
 
 import argparse
@@ -22,7 +24,16 @@ import numpy as np
 import pandas as pd
 
 from flow_anomaly import detectors
-from flow_anomaly.config import ALERT_BUDGETS, ARTIFACTS_DIR, BOOTSTRAP, DATA_DIR, NORMAL, SEED, TARGET_FPR
+from flow_anomaly.config import (
+    ALERT_BUDGETS,
+    ARTIFACTS_DIR,
+    BOOTSTRAP,
+    DATA_DIR,
+    NORMAL,
+    RESCALED_PREVALENCE,
+    SEED,
+    TARGET_FPR,
+)
 from flow_anomaly.data import load
 from flow_anomaly.metrics import at_threshold, bootstrap, precision_at_k, ranking, threshold_at_fpr
 from flow_anomaly.train import experiments
@@ -53,15 +64,16 @@ def evaluate_detector(
     row = {
         "experiment": experiment,
         "detector": detector,
-        "validation_pr_auc": ranking(y_val, s_val)["pr_auc"],
-        **{f"test_{k}": v for k, v in ranking(y_test, s_test).items()},
+        **{f"validation_{k}": v for k, v in ranking(y_val, s_val, RESCALED_PREVALENCE).items()},
+        **{f"test_{k}": v for k, v in ranking(y_test, s_test, RESCALED_PREVALENCE).items()},
         **{f"test_{k}": v for k, v in at_threshold(y_test, s_test, threshold).items()},
         **{f"test_precision@{k}": precision_at_k(y_test, s_test, k) for k in ALERT_BUDGETS},
         **{f"label_free_{k}": v for k, v in at_threshold(y_test, s_test, label_free).items()},
     }
     if n_bootstrap:
-        intervals = bootstrap(y_test, s_test, threshold, n_bootstrap, SEED)
+        intervals = bootstrap(y_test, s_test, threshold, n_bootstrap, SEED, RESCALED_PREVALENCE)
         row["test_pr_auc_low"], row["test_pr_auc_high"] = intervals["pr_auc"]
+        row["test_pr_auc_rescaled_low"], row["test_pr_auc_rescaled_high"] = intervals["pr_auc_rescaled"]
         row["test_recall_low"], row["test_recall_high"] = intervals["recall"]
     alert = s_test > threshold
     by_type = (
@@ -102,12 +114,13 @@ def main() -> None:
                 args.artifacts, experiment, detector, labels, args.bootstrap if main_run else 0
             )
             row["attack_share"] = setup["attack_share"]
+            row["seed"] = setup.get("seed", SEED)
             rows.append(row)
             if main_run:
                 by_type.append(types)
             print(
-                f"{experiment:<20} {detector:<12} val PR AUC {row['validation_pr_auc']:.3f}  "
-                f"test PR AUC {row['test_pr_auc']:.3f}  "
+                f"{experiment:<20} {detector:<12} val PR AUC at 1% {row['validation_pr_auc_rescaled']:.3f}  "
+                f"test PR AUC at 1% {row['test_pr_auc_rescaled']:.3f}  "
                 f"recall at {TARGET_FPR:.0%} FPR {row['test_recall']:.3f}"
             )
     summary = pd.DataFrame(rows)
@@ -117,11 +130,12 @@ def main() -> None:
     types.to_csv(out / "by_type.csv", index=False)
 
     main = summary.loc[(summary["experiment"] == "main") & summary["detector"].isin(detectors.UNSUPERVISED)]
-    best = main.sort_values("validation_pr_auc", ascending=False).iloc[0]
+    best = main.sort_values("validation_pr_auc_rescaled", ascending=False).iloc[0]
     selection = {
         "detector": best["detector"],
         "label": detectors.SPECS[best["detector"]].label,
-        "validation_pr_auc": float(best["validation_pr_auc"]),
+        "validation_pr_auc_rescaled": float(best["validation_pr_auc_rescaled"]),
+        "rescaled_prevalence": RESCALED_PREVALENCE,
         "data": args.data_label,
         "test_attack_share": float(labels["y_test"].mean()),
         "test_flows": int(len(labels["y_test"])),

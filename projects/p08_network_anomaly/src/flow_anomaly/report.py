@@ -14,10 +14,11 @@ from flow_anomaly import detectors
 from flow_anomaly.config import (
     ALERT_BUDGETS,
     ARTIFACTS_DIR,
+    CONTAMINATION_SEEDS,
     CONTAMINATION_SHARES,
     DATA_DIR,
-    NORMAL,
     REPORTS_DIR,
+    RESCALED_PREVALENCE,
     TARGET_FPR,
     TRAIN_ATTACK_SHARE,
 )
@@ -33,7 +34,7 @@ BASELINE = "#898781"
 REFERENCE = "#eb6834"
 INK = "#0b0b0b"
 SERIES = {"iforest": "#2a78d6", "ecod": "#1baf7a", "autoencoder": "#eb6834", "lightgbm": "#898781"}
-TRIAGE_ALERTS = 20
+TRIAGE_GROUPS = 15
 
 
 def label(detector: str) -> str:
@@ -51,11 +52,14 @@ def color(detector: str, selected: str) -> str:
 
 
 def metrics_figure(main: pd.DataFrame, selected: str, path: Path) -> None:
-    order = main.sort_values("test_pr_auc")
+    order = main.sort_values("test_pr_auc_rescaled")
     fig, axes = plt.subplots(1, 2, figsize=(10, 0.45 * len(order) + 1.6), sharey=True)
     y = np.arange(len(order))
     colors = [color(d, selected) for d in order["detector"]]
-    panels = (("pr_auc", "PR AUC"), ("recall", f"Recall at {TARGET_FPR:.0%} false alarm rate"))
+    panels = (
+        ("pr_auc_rescaled", f"PR AUC at {RESCALED_PREVALENCE:.0%} attacks"),
+        ("recall", f"Recall at {TARGET_FPR:.0%} false alarm rate"),
+    )
     for ax, (metric, title) in zip(axes, panels, strict=True):
         value = order[f"test_{metric}"].to_numpy()
         ax.barh(y, value, color=colors, height=0.6)
@@ -92,25 +96,51 @@ def by_type_figure(by_type: pd.DataFrame, order: list[str], path: Path) -> None:
     plt.close(fig)
 
 
-def contamination_figure(summary: pd.DataFrame, path: Path) -> None:
-    fig, ax = plt.subplots(figsize=(6.5, 3.8))
-    for detector in ("iforest", "autoencoder"):
-        points = []
-        for share in CONTAMINATION_SHARES:
-            row = summary.loc[
-                (summary["experiment"] == contamination_name(share)) & (summary["detector"] == detector)
+def contamination_rows(summary: pd.DataFrame) -> pd.DataFrame:
+    """Isolation Forest and autoencoder scores per training attack share and seed."""
+    rows = []
+    for share in CONTAMINATION_SHARES:
+        for seed in CONTAMINATION_SEEDS:
+            part = summary.loc[
+                (summary["experiment"] == contamination_name(share, seed))
+                & summary["detector"].isin(["iforest", "autoencoder"])
             ]
-            if len(row):
-                points.append((share * 100, float(row["test_pr_auc"].iloc[0])))
-        if points:
-            x, v = zip(*points, strict=True)
-            ax.plot(x, v, marker="o", color=SERIES[detector], linewidth=2, label=label(detector))
-    ax.set_xticks([s * 100 for s in CONTAMINATION_SHARES])
-    ax.set_xlabel("Attacks in the training sample (percent)")
-    ax.set_ylabel("Test PR AUC")
-    ax.set_ylim(0, 1)
-    ax.legend(fontsize=8)
-    ax.set_title("Effect of attacks hidden in the training sample", loc="left")
+            rows.append(part.assign(attack_share=share, seed=seed))
+    return pd.concat(rows, ignore_index=True)
+
+
+def contamination_figure(study: pd.DataFrame, path: Path) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.8))
+    panels = (("test_roc_auc", "Test ROC AUC"), ("test_recall", f"Test recall at {TARGET_FPR:.0%} FPR"))
+    for ax, (metric, title) in zip(axes, panels, strict=True):
+        for detector in ("iforest", "autoencoder"):
+            stats = (
+                study.loc[study["detector"] == detector]
+                .groupby("attack_share")[metric]
+                .agg(["mean", "min", "max"])
+            )
+            x = stats.index.to_numpy() * 100
+            ax.errorbar(
+                x,
+                stats["mean"],
+                yerr=[stats["mean"] - stats["min"], stats["max"] - stats["mean"]],
+                marker="o",
+                color=SERIES[detector],
+                linewidth=2,
+                capsize=3,
+                label=label(detector),
+            )
+        ax.set_xticks([s * 100 for s in CONTAMINATION_SHARES])
+        ax.set_xlabel("Attacks in the training sample (percent)")
+        ax.set_ylim(0, 1)
+        ax.set_title(title, loc="left")
+    axes[0].legend(fontsize=8)
+    fig.suptitle(
+        f"Attacks hidden in the training sample (mean of {len(CONTAMINATION_SEEDS)} seeds, range as bars)",
+        x=0.02,
+        y=1.03,
+        ha="left",
+    )
     fig.savefig(path)
     plt.close(fig)
 
@@ -123,10 +153,12 @@ def ablation_figure(summary: pd.DataFrame, path: Path) -> None:
         (("main", "All features", SELECTED), ("no_ttl", "Without time to live features", OTHER))
     ):
         part = summary.loc[summary["experiment"] == experiment].set_index("detector").reindex(names)
-        bars = ax.bar(np.arange(len(names)) + j * width, part["test_pr_auc"], width, color=shade, label=title)
+        bars = ax.bar(
+            np.arange(len(names)) + j * width, part["test_pr_auc_rescaled"], width, color=shade, label=title
+        )
         ax.bar_label(bars, fmt="%.2f", fontsize=8, color=INK)
     ax.set_xticks(np.arange(len(names)) + width / 2, [label(d).split(",")[0] for d in names], fontsize=8)
-    ax.set_ylabel("Test PR AUC")
+    ax.set_ylabel(f"Test PR AUC at {RESCALED_PREVALENCE:.0%} attacks")
     ax.set_ylim(0, 1.1)
     ax.legend(fontsize=8)
     ax.set_title("Ablation: time to live features", loc="left")
@@ -148,9 +180,10 @@ def autoencoder_figure(history: dict, path: Path) -> None:
     plt.close(fig)
 
 
-def triage(flows: pd.DataFrame, artifacts: Path, detector: str, n: int) -> str:
-    """The top test alerts of a detector, each with the three features that deviate most from the
-    training sample (robust z-score of the signed log value)."""
+def triage(flows: pd.DataFrame, artifacts: Path, detector: str, n_groups: int) -> str:
+    """The test alerts of a detector, grouped as an analyst would work them: by protocol, service, state
+    and the three features that deviate most from the training sample (robust z-score of the signed log
+    value). Groups are listed by their highest score."""
     prep = joblib.load(artifacts / "main" / "preprocessor.joblib")
     fit = flows.iloc[np.load(artifacts / "main" / "fit_rows.npy")]
     test = flows.loc[flows["split"].to_numpy() == "test"].reset_index(drop=True)
@@ -164,45 +197,60 @@ def triage(flows: pd.DataFrame, artifacts: Path, detector: str, n: int) -> str:
     iqr = np.subtract(*np.percentile(logged_fit, [75, 25], axis=0))
     scale = np.where(iqr > 1e-6, iqr, logged_fit.std(axis=0) + 1e-6)
     raw_median = fit[columns].median()
-    top = np.argsort(-scores)[:n]
+
+    alerts = test.loc[scores > threshold].copy()
+    alerts["score"] = scores[scores > threshold]
+    z = np.abs((signed_log(alerts[columns].to_numpy(dtype="float64")) - median) / scale)
+    top3 = np.argsort(-z, axis=1)[:, :3]
+    alerts["features"] = [", ".join(sorted(columns[j] for j in row)) for row in top3]
+    alerts["traffic"] = alerts["proto"] + " / " + alerts["service"] + " / " + alerts["state"]
+    groups = (
+        alerts.groupby(["traffic", "features"])
+        .agg(
+            alerts=("score", "size"),
+            top_score=("score", "max"),
+            attacks=("label", "mean"),
+            types=("attack_cat", lambda c: ", ".join(f"{k} {v:,}" for k, v in c.value_counts().items())),
+        )
+        .reset_index()
+        .sort_values("top_score", ascending=False)
+    )
+
+    def values(row) -> str:
+        part = alerts.loc[(alerts["traffic"] == row["traffic"]) & (alerts["features"] == row["features"])]
+        names = row["features"].split(", ")
+        return "; ".join(f"{c} {part[c].median():,.4g} ({raw_median[c]:,.4g})" for c in names)
+
     lines = [
-        "| Rank | Score | Protocol / service / state "
-        "| Most unusual features (value; training median) | Label |",
-        "| ---: | ---: | --- | --- | --- |",
+        "| Group | Alerts | Top score | Protocol / service / state "
+        "| Most unusual features: group median (training median) | Share of attacks | Labels |",
+        "| ---: | ---: | ---: | --- | --- | ---: | --- |",
     ]
-    for rank, row in enumerate(top, start=1):
-        flow = test.iloc[row]
-        z = np.abs((signed_log(flow[columns].to_numpy(dtype="float64")) - median) / scale)
-        reasons = "; ".join(
-            f"{columns[j]} {flow[columns[j]]:,.4g} ({raw_median[columns[j]]:,.4g})"
-            for j in np.argsort(-z)[:3]
-        )
-        truth = "normal" if flow["attack_cat"] == NORMAL else flow["attack_cat"]
+    shown = groups.head(n_groups)
+    for rank, (_, row) in enumerate(shown.iterrows(), start=1):
         lines.append(
-            f"| {rank} | {scores[row]:.4g} | {flow['proto']} / {flow['service']} / {flow['state']} | "
-            f"{reasons} | {truth} |"
+            f"| {rank} | {row['alerts']:,} | {row['top_score']:.4g} | {row['traffic']} | {values(row)} | "
+            f"{row['attacks']:.2f} | {row['types']} |"
         )
-    alerts = scores > threshold
-    attack_types = test.loc[alerts & (test["label"].to_numpy() == 1), "attack_cat"].value_counts()
-    top_labels = test.iloc[top]["attack_cat"]
+    n_attacks = int(alerts["label"].sum())
     head = [
         f"# Alert triage example: {label(detector)}",
         "",
         f"At the threshold set on validation flows ({TARGET_FPR:.0%} of normal flows flagged), the detector "
-        f"raises {int(alerts.sum()):,} alerts on {len(test):,} test flows; "
-        f"{int((alerts & (test['label'].to_numpy() == 1)).sum()):,} of them are attacks "
-        f"(precision {test['label'].to_numpy()[alerts].mean():.3f}).",
-        f"Of the {n} highest scores below, {int((top_labels != NORMAL).sum())} are attacks. An analyst "
-        "starts with these. Each row names the three features whose signed log value lies furthest from "
-        "the training sample median, in interquartile ranges, with the raw value and the raw training "
-        "median. The label column is shown for this example only; the detector does not see it.",
+        f"raises {len(alerts):,} alerts on {len(test):,} test flows; {n_attacks:,} of them are attacks "
+        f"(precision {n_attacks / max(len(alerts), 1):.3f}).",
+        "",
+        f"An analyst does not read {len(alerts):,} alerts one by one. They fall into {len(groups):,} groups "
+        "of the same protocol, service and state with the same three most unusual features (the features "
+        "whose signed log value lies furthest from the training sample median, in interquartile ranges). "
+        f"The {len(shown)} groups with the highest scores are below. The share of attacks and the labels are "
+        "shown for this example only; the detector does not see them.",
         "",
     ]
+    by_type = alerts.loc[alerts["label"] == 1, "attack_cat"].value_counts()
     tail = [
         "",
-        "Attack types among all alerts: "
-        + ", ".join(f"{name} {count:,}" for name, count in attack_types.items())
-        + ".",
+        "Attack types among all alerts: " + ", ".join(f"{k} {v:,}" for k, v in by_type.items()) + ".",
     ]
     return "\n".join(head + lines + tail) + "\n"
 
@@ -216,13 +264,15 @@ def fmt_interval(row: pd.Series, metric: str) -> str:
 
 def main_table(main: pd.DataFrame, selected: str) -> str:
     rows = []
-    for _, row in main.sort_values("test_pr_auc", ascending=False).iterrows():
+    share = f"{RESCALED_PREVALENCE:.0%} attacks"
+    for _, row in main.sort_values("test_pr_auc_rescaled", ascending=False).iterrows():
         name = label(row["detector"]) + (" (selected)" if row["detector"] == selected else "")
         rows.append(
             {
                 "Detector": name,
-                "Validation PR AUC": f"{row['validation_pr_auc']:.3f}",
-                "Test PR AUC (95% interval)": fmt_interval(row, "pr_auc"),
+                f"Validation PR AUC at {share}": f"{row['validation_pr_auc_rescaled']:.3f}",
+                f"Test PR AUC at {share} (95% interval)": fmt_interval(row, "pr_auc_rescaled"),
+                "Test PR AUC as observed (95% interval)": fmt_interval(row, "pr_auc"),
                 "Test ROC AUC": f"{row['test_roc_auc']:.3f}",
                 f"Recall at {TARGET_FPR:.0%} FPR (95% interval)": fmt_interval(row, "recall"),
                 "Test FPR": f"{row['test_fpr']:.4f}",
@@ -251,22 +301,30 @@ def main() -> None:
     flows = load(args.data_dir)
 
     main = summary.loc[summary["experiment"] == "main"]
-    order = main.sort_values("test_pr_auc", ascending=False)["detector"].tolist()
+    order = main.sort_values("test_pr_auc_rescaled", ascending=False)["detector"].tolist()
     metrics_figure(main, selected, figures / "detectors.png")
     by_type_figure(by_type, order, figures / "recall_by_type.png")
-    contamination_figure(summary, figures / "contamination.png")
+    study = contamination_rows(summary)
+    contamination_figure(study, figures / "contamination.png")
     ablation_figure(summary, figures / "ttl_ablation.png")
     history = json.loads((args.artifacts / "main" / "models" / "autoencoder" / "history.json").read_text())
     autoencoder_figure(history, figures / "autoencoder_training.png")
-    (args.reports / "triage_example.md").write_text(triage(flows, args.artifacts, selected, TRIAGE_ALERTS))
+    (args.reports / "triage_example.md").write_text(triage(flows, args.artifacts, selected, TRIAGE_GROUPS))
 
     type_table = (
         by_type.pivot(index="detector", columns="attack_cat", values="recall").reindex(order).round(3)
     )
     type_table.index = [label(d) for d in type_table.index]
-    other = summary.loc[summary["experiment"] != "main"].copy()
-    other["detector"] = other["detector"].map(label)
-    other_cols = ["experiment", "detector", "attack_share", "validation_pr_auc", "test_pr_auc", "test_recall"]
+    metrics = ["test_roc_auc", "test_recall", "test_pr_auc_rescaled"]
+    study_table = study.groupby(["detector", "attack_share"])[metrics].agg(["mean", "min", "max"]).round(3)
+    study_table.columns = [f"{m} {stat}" for m, stat in study_table.columns]
+    study_table = study_table.reset_index()
+    study_table["detector"] = study_table["detector"].map(label)
+    ablation = summary.loc[summary["experiment"].isin(["main", "no_ttl"])]
+    ablation = ablation.loc[ablation["detector"].isin(["iforest", "ecod", "autoencoder", "lightgbm"])]
+    ablation = ablation.pivot(index="detector", columns="experiment", values=metrics).round(3)
+    ablation.columns = [f"{m} {e}" for m, e in ablation.columns]
+    ablation.index = [label(d) for d in ablation.index]
     label_free = main[["detector", "label_free_alert_share", "label_free_fpr", "label_free_recall"]].copy()
     label_free["detector"] = label_free["detector"].map(label)
     timings = {
@@ -281,9 +339,11 @@ def main() -> None:
         f"({audit['attack_share']:.1%} attacks). Test split: {selection['test_flows']:,} flows "
         f"({selection['test_attack_share']:.1%} attacks). Unsupervised detectors are fitted on a training "
         f"sample with {TRAIN_ATTACK_SHARE:.0%} attacks and no labels. Thresholds: {TARGET_FPR:.0%} of normal "
-        "validation flows flagged. Intervals: bootstrap over test flows.",
+        f"validation flows flagged. PR AUC is shown as observed and rescaled to {RESCALED_PREVALENCE:.0%} "
+        "attacks (precision recomputed from recall and false alarm rate). Intervals: bootstrap over test "
+        "flows.",
         "",
-        f"Selected on validation PR AUC: **{selection['label']}**.",
+        f"Selected on validation PR AUC at {RESCALED_PREVALENCE:.0%} attacks: **{selection['label']}**.",
         "",
         "## Detectors (main experiment)",
         "",
@@ -299,9 +359,18 @@ def main() -> None:
         "",
         label_free.round(4).to_markdown(index=False),
         "",
-        "## Contamination study and time to live ablation",
+        "## Contamination study",
         "",
-        other[other_cols].round(4).to_markdown(index=False),
+        "Isolation Forest and the autoencoder; each share drawn and fitted with seeds "
+        f"{CONTAMINATION_SEEDS}.",
+        "",
+        study_table.to_markdown(index=False),
+        "",
+        "## Time to live ablation",
+        "",
+        "`main` uses all features, `no_ttl` drops sttl, dttl and ct_state_ttl.",
+        "",
+        ablation.to_markdown(),
         "",
         "## Data audit",
         "",
@@ -320,7 +389,8 @@ def main() -> None:
     results = {
         "selection": selection,
         "main": main.round(4).to_dict(orient="records"),
-        "other_experiments": summary.loc[summary["experiment"] != "main"].round(4).to_dict(orient="records"),
+        "contamination_study": study.round(4).to_dict(orient="records"),
+        "ttl_ablation": summary.loc[summary["experiment"] == "no_ttl"].round(4).to_dict(orient="records"),
         "recall_by_type": by_type.round(4).to_dict(orient="records"),
         "audit": audit,
     }

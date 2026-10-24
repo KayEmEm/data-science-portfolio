@@ -96,12 +96,13 @@ class PyOD:
 
 
 class AutoencoderDetector:
-    def __init__(self, settings: AutoencoderSettings, folder: Path):
+    def __init__(self, settings: AutoencoderSettings, folder: Path, seed: int = SEED):
         self.settings = settings
         self.folder = folder
+        self.seed = seed
 
     def fit(self, x: np.ndarray) -> "AutoencoderDetector":
-        self.history = autoencoder.fit(x, self.settings, self.folder)
+        self.history = autoencoder.fit(x, self.settings, self.folder, self.seed)
         self.model = autoencoder.load(self.folder, x.shape[1], self.settings)
         return self
 
@@ -158,12 +159,17 @@ class Supervised:
 
 
 def make(
-    name: str, forest: ForestSettings, ae: AutoencoderSettings, folder: Path, members: dict | None = None
+    name: str,
+    forest: ForestSettings,
+    ae: AutoencoderSettings,
+    folder: Path,
+    members: dict | None = None,
+    seed: int = SEED,
 ):
     if name == "robust_z":
         return RobustZ()
     if name == "iforest":
-        return Forest(forest)
+        return Forest(forest, seed)
     if name == "lof":
         return LOF()
     if name == "hbos":
@@ -173,7 +179,7 @@ def make(
     if name == "copod":
         return PyOD(COPOD())
     if name == "autoencoder":
-        return AutoencoderDetector(ae, folder / "autoencoder")
+        return AutoencoderDetector(ae, folder / "autoencoder", seed)
     if name == "ensemble":
         return Ensemble({m: members[m] for m in ENSEMBLE_MEMBERS})
     raise KeyError(name)
