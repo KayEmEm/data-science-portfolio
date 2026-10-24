@@ -21,6 +21,7 @@ jobs:
       p06: ${{ steps.filter.outputs.p06 }}
       p07: ${{ steps.filter.outputs.p07 }}
       p08: ${{ steps.filter.outputs.p08 }}
+      p09: ${{ steps.filter.outputs.p09 }}
     steps:
       - uses: actions/checkout@v4
       - id: filter
@@ -61,6 +62,10 @@ jobs:
             p08:
               - 'common/**'
               - 'projects/p08_network_anomaly/**'
+              - '.github/workflows/**'
+            p09:
+              - 'common/**'
+              - 'projects/p09_customer_segments/**'
               - '.github/workflows/**'
 
   common:
@@ -245,4 +250,24 @@ jobs:
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on synthetic flows (no data download)
+        run: make smoke
+
+  p09_customer_segments:
+    needs: changes
+    if: needs.changes.outputs.p09 == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/p09_customer_segments
+    env:
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -e ../../common -e ".[dev]"
+      - run: make lint
+      - run: make test
+      - name: Smoke run of the full pipeline on synthetic order lines (no data download)
         run: make smoke
