@@ -6,7 +6,8 @@
 * novelty: the mean self information, -log2 of the share of history users who
   rated a recommended movie. Higher means less popular movies.
 
-Recall and NDCG are averaged over users, so a heavy user counts as much as a light one.
+Recall and NDCG are averaged over users, so a heavy user counts as much as a light one;
+their 95 percent intervals treat users as independent draws.
 """
 
 from collections.abc import Callable
@@ -82,6 +83,12 @@ def novelty(recs: np.ndarray, popularity: pd.Series, n_users: int) -> float:
     return float(np.mean(-np.log2(share)))
 
 
+def half_width(values: pd.Series) -> float:
+    """Half width of a normal 95 percent interval for the mean over users."""
+    values = values.dropna()
+    return float(1.96 * values.std(ddof=1) / np.sqrt(len(values))) if len(values) > 1 else float("nan")
+
+
 def summarize(
     users: np.ndarray,
     recs: np.ndarray,
@@ -98,7 +105,9 @@ def summarize(
     return {
         "users": int(len(users)),
         f"recall@{k}": float(scores["recall"].mean()),
+        f"recall@{k}_ci95": half_width(scores["recall"]),
         f"ndcg@{k}": float(scores["ndcg"].mean()),
+        f"ndcg@{k}_ci95": half_width(scores["ndcg"]),
         f"hit_rate@{k}": float((scores["hits"] > 0).mean()),
         f"coverage@{k}": float(len(distinct) / n_catalog),
         f"novelty@{k}": novelty(top, popularity, n_history_users),

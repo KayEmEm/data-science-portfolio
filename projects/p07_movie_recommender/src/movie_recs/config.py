@@ -12,6 +12,8 @@ REPORTS_DIR = PROJECT_DIR / "reports"
 # MovieLens 32M, the latest stable full release of GroupLens (May 2024).
 # The GroupLens terms forbid redistribution, so the zip is never committed.
 SOURCE_URL = "https://files.grouplens.org/datasets/movielens/ml-32m.zip"
+# The MD5 that GroupLens publishes in ml-32m.zip.md5; it pins the exact archive this project was run on.
+SOURCE_MD5 = "d472be332d4daa821edc399621853b57"
 RAW_NAME = "ml-32m.zip"
 ARCHIVE_ROOT = "ml-32m"
 SOURCE_FILES = {

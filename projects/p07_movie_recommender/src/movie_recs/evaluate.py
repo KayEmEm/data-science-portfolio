@@ -5,7 +5,8 @@ Outputs under ``artifacts/evaluation/``:
 * ``summary.csv``: recall, NDCG, hit rate, coverage and novelty at 10 per stage and model;
 * ``cold_users.csv``: test recall and NDCG at 10 by the number of ratings a user had before the window,
   and for users with no rating before it (popularity only);
-* ``cold_items.csv``: movies first rated in the test window, ranked among themselves.
+* ``cold_items.csv``: movies first rated in the test window, ranked among themselves;
+* ``paired_test.csv``: test NDCG difference of each model to two references, paired by user.
 """
 
 import argparse
@@ -20,7 +21,7 @@ from movie_recs import baselines
 from movie_recs.config import ARTIFACTS_DIR, DATA_DIR, RECENT_DAYS, K
 from movie_recs.data import load
 from movie_recs.interactions import make_stage
-from movie_recs.metrics import per_user, summarize
+from movie_recs.metrics import half_width, per_user, summarize
 from movie_recs.train import load_lists, stage_dir
 
 MODELS = ["popularity", "popularity_recent", "als", "two_tower", "ranker"]
@@ -56,7 +57,7 @@ def main() -> None:
     out = args.artifacts / "evaluation"
     out.mkdir(parents=True, exist_ok=True)
 
-    rows, cold_users, cold_items = [], [], []
+    rows, cold_users, cold_items, test_ndcg = [], [], [], {}
     for name in ("validation", "test"):
         stage = make_stage(data["ratings"], data["split"], name)
         lists = stage_dir(args.artifacts, name) / "lists"
@@ -74,6 +75,7 @@ def main() -> None:
             if name != "test":
                 continue
             scores = per_user(compare, items, stage.targets, K)
+            test_ndcg[model] = scores["ndcg"].to_numpy()
             scores["n_history"] = history_counts.reindex(compare).to_numpy()
             for lo, hi in BUCKETS:
                 upper = np.inf if hi is None else hi
@@ -123,6 +125,21 @@ def main() -> None:
 
     summary = pd.DataFrame(rows)
     summary.to_csv(out / "summary.csv", index=False)
+    paired = []
+    for model in MODELS:
+        for reference in ("popularity_recent", "als"):
+            if model == reference:
+                continue
+            diff = pd.Series(test_ndcg[model] - test_ndcg[reference])
+            paired.append(
+                {
+                    "model": model,
+                    "reference": reference,
+                    f"ndcg@{K}_difference": diff.mean(),
+                    "ci95": half_width(diff),
+                }
+            )
+    pd.DataFrame(paired).to_csv(out / "paired_test.csv", index=False)
     pd.DataFrame(cold_users).to_csv(out / "cold_users.csv", index=False)
     pd.DataFrame(cold_items).to_csv(out / "cold_items.csv", index=False)
     validation = summary.loc[summary["stage"] == "validation"].set_index("model")

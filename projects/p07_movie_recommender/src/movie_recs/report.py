@@ -175,6 +175,7 @@ def main() -> None:
     choices = json.loads((args.artifacts / "selection.json").read_text())
     ranker_info = json.loads((args.artifacts / "ranker.json").read_text())
     importance = pd.read_csv(args.artifacts / "ranker_importance.csv")
+    paired = pd.read_csv(evaluation / "paired_test.csv")
     als_grid = pd.read_csv(stage_dir(args.artifacts, "validation") / "als_grid.csv")
     epochs = pd.read_csv(stage_dir(args.artifacts, "validation") / "two_tower_epochs.csv")
     data = load(args.data_dir)
@@ -222,6 +223,7 @@ def main() -> None:
         "## Windows\n",
         markdown(windows),
         f"\n## Test window (all scored users)\n\n{markdown(table('test'))}",
+        f"\n## Test NDCG differences, paired by user\n\n{markdown(paired)}",
         f"\n## Validation window (comparison half of the users)\n\n{markdown(table('validation'))}",
         f"\n## ALS settings (validation)\n\n{markdown(als_grid)}",
         f"\n## Two tower epochs (validation sample)\n\n{markdown(epochs)}",
@@ -243,6 +245,7 @@ def main() -> None:
         "ranker": ranker_info,
         "windows": windows.to_dict(orient="records"),
         "summary": summary.round(4).to_dict(orient="records"),
+        "paired_test": paired.round(4).to_dict(orient="records"),
         "cold_users": cold_users.round(4).to_dict(orient="records"),
         "cold_items": cold_items.round(4).to_dict(orient="records") if len(cold_items) else [],
     }

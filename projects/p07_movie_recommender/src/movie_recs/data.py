@@ -1,8 +1,9 @@
 """Read the MovieLens 32M zip, check its layout, and store Parquet tables and the time split.
 
 The GroupLens host may be unreachable from a build environment, so the zip can
-also be given as a local file (``--source``). Its MD5 can be checked against
-the ``ml-32m.zip.md5`` file that GroupLens publishes next to it (``--md5``).
+also be given as a local file (``--source``). Its MD5 is checked against the
+value that GroupLens publishes in ``ml-32m.zip.md5``; ``--md5 any`` skips the
+check (for the synthetic archive of the smoke run).
 """
 
 import argparse
@@ -29,6 +30,7 @@ from movie_recs.config import (
     RAW_DIR,
     RAW_NAME,
     SOURCE_FILES,
+    SOURCE_MD5,
     SOURCE_URL,
     SPLIT_PATH,
     TAGS_PATH,
@@ -168,13 +170,13 @@ def load(data_dir: Path = DATA_DIR) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, help="a local copy of ml-32m.zip instead of the download")
-    parser.add_argument("--md5", help="the MD5 that GroupLens publishes for the zip")
+    parser.add_argument("--md5", default=SOURCE_MD5, help="expected MD5 of the zip; 'any' skips the check")
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--no-count-check", action="store_true", help="skip the release size checks")
     args = parser.parse_args()
     archive = args.source if args.source else download()
     md5 = digest(archive, "md5")
-    if args.md5 and md5 != args.md5.strip().lower():
+    if args.md5 != "any" and md5 != args.md5.strip().lower():
         raise SchemaError(f"{archive} has MD5 {md5}, expected {args.md5}")
     processed = normalize(read_archive(archive), expect_counts=not args.no_count_check)
     write(processed, args.data_dir)
