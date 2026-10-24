@@ -5,9 +5,9 @@ Three runs share the data, image size, seed and number of epochs:
 * ``frozen_backbone``: the baseline. The COCO backbone stays fixed and only the
   neck and detection head learn the four damage types.
 * ``full``: every layer learns, with the default Ultralytics augmentation
-  (mosaic, scale, translation, horizontal flip, color jitter). The main model.
+  (mosaic, scale, translation, horizontal flip, color jitter).
 * ``light_augment``: as ``full`` but without mosaic and with smaller scale and
-  color changes, for the augmentation study.
+  color changes, for the augmentation study. The main model (``MAIN_RUN``).
 """
 
 import argparse
@@ -41,7 +41,9 @@ RUNS: dict[str, dict] = {
     "full": {},
     "light_augment": {"mosaic": 0.0, "scale": 0.2, "hsv_s": 0.3, "hsv_v": 0.2, "translate": 0.05},
 }
-MAIN_RUN = "full"
+# The run with the highest validation mAP50 (0.300, against 0.267 for ``full``); the
+# test split is evaluated only after this choice.
+MAIN_RUN = "light_augment"
 
 
 def setup_mlflow(artifacts_dir: Path) -> None:
