@@ -21,8 +21,8 @@ from road_damage.train import MAIN_RUN, RUNS
 
 RUN_LABELS = {
     "frozen_backbone": "Frozen backbone (baseline)",
-    "full": "Full fine tune (main)",
-    "light_augment": "Full fine tune, light augmentation",
+    "full": "Full fine tune",
+    "light_augment": "Full fine tune, light augmentation (main)",
 }
 
 
@@ -169,7 +169,8 @@ def plot_confusion(results: dict, path: Path) -> None:
     ax.set_yticks(range(len(names)), names)
     ax.set_xlabel("true")
     ax.set_ylabel("predicted")
-    ax.set_title("Main model: share of each true class, test split")
+    conf = results.get("confusion_conf")
+    ax.set_title(f"Main model, confidence {conf} or more: share of each true class" if conf else "Main model")
     fig.colorbar(image, ax=ax, fraction=0.046)
     fig.savefig(path)
     plt.close(fig)
@@ -191,6 +192,10 @@ def plot_curves(artifacts_dir: Path, path: Path) -> None:
     plt.close(fig)
 
 
+# One format per column of the run table: scores to 3 decimals, minutes to 1, epochs as integers.
+RUN_TABLE_FORMAT = ("", *[".3f"] * 8, ".1f", ".0f", "")
+
+
 def results_markdown(results: dict, train: dict, export: dict | None) -> str:
     rows = []
     for run in RUNS:
@@ -207,6 +212,7 @@ def results_markdown(results: dict, train: dict, export: dict | None) -> str:
                 **{f"AP50 {c}": row["ap50_per_class"][c] for c in CLASSES},
                 "train minutes": train.get(run, {}).get("train_minutes", float("nan")),
                 "epochs": train.get(run, {}).get("epochs", float("nan")),
+                "trained on": train.get(run, {}).get("device", ""),
             }
         )
     breakdown = pd.DataFrame(
@@ -227,7 +233,7 @@ def results_markdown(results: dict, train: dict, export: dict | None) -> str:
         "",
         "## Runs",
         "",
-        pd.DataFrame(rows).to_markdown(index=False, floatfmt=".3f"),
+        pd.DataFrame(rows).to_markdown(index=False, floatfmt=RUN_TABLE_FORMAT),
         "",
         "## Main model by country and lighting",
         "",
@@ -242,7 +248,8 @@ def results_markdown(results: dict, train: dict, export: dict | None) -> str:
             ]
         )
         lines += [
-            f"## CPU inference speed ({export['cpu']['cores']} cores, {export['imgsz']} pixels, batch 1)",
+            f"## CPU inference speed ({export['cpu']['cores']} cores, {export['cpu']['threads']} threads, "
+            f"{export['imgsz']} pixels, batch 1)",
             "",
             speed.to_markdown(index=False, floatfmt=".1f"),
             "",

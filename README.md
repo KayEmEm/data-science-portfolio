@@ -9,6 +9,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 | 3 | [New York taxi demand](projects/p03_taxi_demand) | Exploratory analysis and reporting | complete | 38.7 million trips in a DuckDB warehouse; dashboard mock up and five findings (airports: 9.8 percent of trips, 27.1 percent of revenue) |
 | 4 | [Email campaign uplift](projects/p04_email_uplift) | Experimentation and causal inference | complete | mens email: +$0.77 spend per customer (95% CI 0.49 to 1.05); mailing everyone beats four uplift model policies; observational estimate without past spend is biased by +2.0 pp |
 | 5 | [Retail demand forecasting](projects/p05_retail_forecasting) | Time series forecasting | complete | M5 test WRMSSE 0.562 with a global LightGBM model (seasonal naive 0.847); 95% intervals cover 94.1% of item x store days |
+| 6 | [Road damage detection](projects/p06_road_damage) | Computer vision | complete | RDD2022 Czech and India test mAP50 0.288 with YOLO11n (frozen backbone baseline 0.214); ONNX 26.6 ms per image on CPU |
 
 ## Shared conventions
 
@@ -29,9 +30,10 @@ projects/
   p03_taxi_demand/
   p04_email_uplift/
   p05_retail_forecasting/
+  p06_road_damage/      AGPL-3.0, because it uses Ultralytics YOLO
 .github/workflows/      one CI workflow
 ```
 
 ## License
 
-Code: MIT (see `LICENSE`). Each dataset keeps its own license, stated in its project README.
+Code: MIT (see `LICENSE`), except `projects/p06_road_damage`, which is AGPL-3.0 (see its `LICENSE`). Each dataset keeps its own license, stated in its project README.
