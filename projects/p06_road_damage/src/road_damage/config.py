@@ -39,9 +39,9 @@ SEED = 42
 # Training on 4 CPU cores. YOLO11n has 2.6 million parameters; its COCO
 # weights come from the Ultralytics GitHub release (AGPL-3.0).
 BASE_WEIGHTS = "yolo11n.pt"
-IMAGE_SIZE = 640
+IMAGE_SIZE = 512  # the images are 600 (Czech) and 720 (India) pixels square
 BATCH = 16
-EPOCHS = 30
+EPOCHS = 12  # schedule S57: about 3 to 4 hours per run on 4 cores
 PATIENCE = 10
 WORKERS = 4
 EXPERIMENT = "p06_road_damage"
