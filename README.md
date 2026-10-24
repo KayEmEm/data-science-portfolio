@@ -12,6 +12,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 | 6 | [Road damage detection](projects/p06_road_damage) | Computer vision | complete | RDD2022 Czech and India test mAP50 0.288 with YOLO11n (frozen backbone baseline 0.214); ONNX 26.6 ms per image on CPU |
 | 7 | [Movie recommendations](projects/p07_movie_recommender) | Recommendation and ranking | complete | MovieLens 32M test NDCG at 10 0.134 with ALS and two tower candidates and a LightGBM ranker (90 day popularity baseline 0.095) |
 | 8 | [Network intrusion as anomaly detection](projects/p08_network_anomaly) | Anomaly detection | complete | UNSW-NB15 test recall 0.22 at 1% false alarm rate without labels (Isolation Forest; supervised LightGBM 0.93); the autoencoder finds other attack types and loses most recall when 1% of its training data are attacks |
+| 9 | [Customer segments](projects/p09_customer_segments) | Clustering and segmentation | complete | Online Retail II: three stable k means segments (bootstrap adjusted Rand 0.95); active repeat buyers are 29% of customers and 82% of spend; the ten rule RFM grid separates next quarter's spend better (adjusted eta squared 0.262 against 0.214) |
 
 ## Shared conventions
 
@@ -35,6 +36,7 @@ projects/
   p06_road_damage/      AGPL-3.0, because it uses Ultralytics YOLO
   p07_movie_recommender/
   p08_network_anomaly/
+  p09_customer_segments/
 .github/workflows/      one CI workflow
 ```
 

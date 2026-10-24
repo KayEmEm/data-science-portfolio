@@ -4,21 +4,33 @@
   "customers": 5240,
   "selection": {
     "scaling": "quantile",
-    "k": 4,
+    "k": 3,
     "rule": "highest silhouette among candidates",
-    "silhouette": 0.34944581893615345,
-    "stability_ari": 0.8136358431491625,
-    "min_share": 0.039122137404580155,
+    "silhouette": 0.1941635952091909,
+    "stability_ari": 0.9540203179156778,
+    "min_share": 0.2877862595419847,
     "mean_stability_by_scaling": {
-      "quantile": 0.8318,
-      "standard": 0.7678,
-      "raw": 0.7668,
-      "robust": 0.578
+      "raw": 0.7934,
+      "quantile": 0.7743,
+      "standard": 0.7696,
+      "robust": 0.7589
     },
     "candidates": [
       {
         "scaling": "standard",
         "k": 3
+      },
+      {
+        "scaling": "standard",
+        "k": 4
+      },
+      {
+        "scaling": "robust",
+        "k": 3
+      },
+      {
+        "scaling": "robust",
+        "k": 6
       },
       {
         "scaling": "quantile",
@@ -27,32 +39,51 @@
       {
         "scaling": "quantile",
         "k": 4
-      },
-      {
-        "scaling": "quantile",
-        "k": 5
       }
     ],
     "gap_choice": {
       "quantile": 3,
       "raw": 2,
-      "robust": 2,
-      "standard": 2
+      "robust": null,
+      "standard": null
     },
     "rfm_only": {
-      "scaling": "raw",
+      "scaling": "robust",
       "k": 3,
-      "silhouette": 0.5305248858239276,
-      "stability_ari": 0.98427344551797
+      "rule": "highest silhouette among candidates",
+      "silhouette": 0.3517778158956151,
+      "stability_ari": 0.9523463589554793,
+      "min_share": 0.2505725190839695
+    },
+    "first_attempt": {
+      "scaling": "quantile",
+      "k": 4,
+      "rule": "highest silhouette among candidates",
+      "silhouette": 0.34944581893615345,
+      "stability_ari": 0.8136358431491625,
+      "min_share": 0.039122137404580155
     },
     "hdbscan": "hdbscan_m25_quantile",
-    "column": "kmeans_rfm_mix_quantile_k4",
+    "column": "kmeans_rfm_mix_quantile_k3",
     "customers": 5240
   },
   "comparison": [
     {
       "segmentation": "kmeans_rfm_mix",
-      "column": "kmeans_rfm_mix_quantile_k4",
+      "column": "kmeans_rfm_mix_quantile_k3",
+      "segments": 3,
+      "eta2_spend": 0.2142,
+      "eta2_spend_low": 0.1923,
+      "eta2_spend_high": 0.2378,
+      "eta2_purchase": 0.1688,
+      "eta2_purchase_low": 0.1494,
+      "eta2_purchase_high": 0.1887,
+      "purchase_rate_min": 0.2067,
+      "purchase_rate_max": 0.7328
+    },
+    {
+      "segmentation": "kmeans_first_attempt",
+      "column": "kmeans_rfm_mix_returns_quantile_k4",
       "segments": 4,
       "eta2_spend": 0.1366,
       "eta2_spend_low": 0.1204,
@@ -65,29 +96,29 @@
     },
     {
       "segmentation": "kmeans_rfm",
-      "column": "kmeans_rfm_raw_k3",
+      "column": "kmeans_rfm_robust_k3",
       "segments": 3,
-      "eta2_spend": 0.1661,
-      "eta2_spend_low": 0.1488,
-      "eta2_spend_high": 0.1863,
-      "eta2_purchase": 0.146,
-      "eta2_purchase_low": 0.1315,
-      "eta2_purchase_high": 0.1642,
-      "purchase_rate_min": 0.2142,
-      "purchase_rate_max": 0.9524
+      "eta2_spend": 0.2615,
+      "eta2_spend_low": 0.24,
+      "eta2_spend_high": 0.2855,
+      "eta2_purchase": 0.2146,
+      "eta2_purchase_low": 0.1939,
+      "eta2_purchase_high": 0.2345,
+      "purchase_rate_min": 0.1653,
+      "purchase_rate_max": 0.7807
     },
     {
       "segmentation": "hdbscan",
       "column": "hdbscan_m25_quantile",
-      "segments": 5,
-      "eta2_spend": 0.1409,
-      "eta2_spend_low": 0.1249,
-      "eta2_spend_high": 0.1613,
-      "eta2_purchase": 0.12,
-      "eta2_purchase_low": 0.1049,
-      "eta2_purchase_high": 0.1395,
-      "purchase_rate_min": 0.2014,
-      "purchase_rate_max": 0.6308
+      "segments": 3,
+      "eta2_spend": 0.0983,
+      "eta2_spend_low": 0.0858,
+      "eta2_spend_high": 0.1121,
+      "eta2_purchase": 0.0915,
+      "eta2_purchase_low": 0.0789,
+      "eta2_purchase_high": 0.1064,
+      "purchase_rate_min": 0.2075,
+      "purchase_rate_max": 0.536
     },
     {
       "segmentation": "rfm_grid",
@@ -104,6 +135,101 @@
     }
   ],
   "profiles": [
+    {
+      "segment": 1,
+      "customers": 1508,
+      "customer_share": 0.2878,
+      "spend_share": 0.8181,
+      "median_recency_days": 43.392,
+      "median_frequency": 9.0,
+      "median_monetary": 3376.755,
+      "median_mean_basket": 384.2499,
+      "median_tenure_days": 591.3854,
+      "median_distinct_products": 132.0,
+      "mean_return_share": 0.0224,
+      "uk_share": 0.8966,
+      "share_christmas": 0.0341,
+      "share_lights_candles": 0.0906,
+      "share_bags": 0.1013,
+      "share_kitchen_dining": 0.2248,
+      "share_stationery_wrap": 0.0787,
+      "share_toys_crafts": 0.05,
+      "share_party": 0.0258,
+      "share_storage": 0.0904,
+      "share_garden_outdoor": 0.0461,
+      "share_jewellery_accessories": 0.0158,
+      "share_home_decor": 0.1617,
+      "share_other": 0.0806,
+      "top_categories": "bags x1.3, home_decor x1.1, kitchen_dining x1.0",
+      "future_purchase_rate": 0.7328,
+      "future_spend_mean": 1413.2556,
+      "future_spend_share": 0.7698,
+      "jaccard": 0.9625
+    },
+    {
+      "segment": 2,
+      "customers": 2169,
+      "customer_share": 0.4139,
+      "spend_share": 0.1416,
+      "median_recency_days": 181.5618,
+      "median_frequency": 3.0,
+      "median_monetary": 721.43,
+      "median_mean_basket": 226.5667,
+      "median_tenure_days": 455.4257,
+      "median_distinct_products": 38.0,
+      "mean_return_share": 0.0247,
+      "uk_share": 0.9304,
+      "share_christmas": 0.0373,
+      "share_lights_candles": 0.1129,
+      "share_bags": 0.0669,
+      "share_kitchen_dining": 0.2167,
+      "share_stationery_wrap": 0.0824,
+      "share_toys_crafts": 0.0498,
+      "share_party": 0.0244,
+      "share_storage": 0.091,
+      "share_garden_outdoor": 0.0523,
+      "share_jewellery_accessories": 0.0208,
+      "share_home_decor": 0.146,
+      "share_other": 0.0996,
+      "top_categories": "lights_candles x1.1, other x1.0, garden_outdoor x1.0",
+      "future_purchase_rate": 0.3983,
+      "future_spend_mean": 218.0072,
+      "future_spend_share": 0.1708,
+      "jaccard": 0.9734
+    },
+    {
+      "segment": 3,
+      "customers": 1563,
+      "customer_share": 0.2983,
+      "spend_share": 0.0403,
+      "median_recency_days": 321.5736,
+      "median_frequency": 1.0,
+      "median_monetary": 229.95,
+      "median_mean_basket": 233.54,
+      "median_tenure_days": 321.5736,
+      "median_distinct_products": 16.0,
+      "mean_return_share": 0.0145,
+      "uk_share": 0.906,
+      "share_christmas": 0.0407,
+      "share_lights_candles": 0.1082,
+      "share_bags": 0.0739,
+      "share_kitchen_dining": 0.2203,
+      "share_stationery_wrap": 0.0883,
+      "share_toys_crafts": 0.0539,
+      "share_party": 0.0231,
+      "share_storage": 0.0886,
+      "share_garden_outdoor": 0.0523,
+      "share_jewellery_accessories": 0.0142,
+      "share_home_decor": 0.133,
+      "share_other": 0.1035,
+      "top_categories": "christmas x1.1, other x1.1, stationery_wrap x1.1",
+      "future_purchase_rate": 0.2067,
+      "future_spend_mean": 105.2829,
+      "future_spend_share": 0.0594,
+      "jaccard": 1.0
+    }
+  ],
+  "profiles_first_attempt": [
     {
       "segment": 1,
       "customers": 1933,

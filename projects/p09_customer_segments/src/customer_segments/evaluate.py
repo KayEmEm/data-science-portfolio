@@ -3,18 +3,21 @@
 Selection uses no outcome. A k means solution on the ``rfm_mix`` features is a candidate when its
 mean bootstrap adjusted Rand index is at least ``MIN_STABILITY`` and its smallest segment holds at
 least ``MIN_SEGMENT_SHARE`` of the customers, with k in ``SELECTION_K``. Silhouette scores of
-different scalings live in different spaces and are not compared: the scaling is the one with the
-highest mean stability over ``SELECTION_K``, and within it the candidate with the highest
+different scalings live in different spaces and are not compared: among the scalings with at least
+one candidate, the scaling is the one with the highest mean stability over ``SELECTION_K``, and
+within it the candidate with the highest
 silhouette is selected. The same rule picks k for the ``rfm`` features. The HDBSCAN setting of the
 selected scaling with the highest silhouette among those with at most ``MAX_NOISE`` noise is kept for
 the comparison.
 
 The same rule picks the first attempt with ``return_share`` (``rfm_mix_returns``), which was the
-main feature set before the results of the first run changed it (see ``config.py``).
+main feature set before the results of the first run changed it (see ``config.py``). The condition
+"with at least one candidate" was added after the second run, where the unscaled features had the
+highest mean stability but only solutions with a segment of under 1 percent of the customers.
 
 Check on the next quarter, which no clustering saw: how much of the variance of log future spend
 and of the future purchase indicator the segment means explain (adjusted eta squared, with 95
-percent bootstrap intervals over customers), for the selected k means, the ablation, k means on RFM
+percent bootstrap intervals over customers), for the selected k means, the first attempt, k means on RFM
 only, HDBSCAN, and the rule based RFM grid.
 
 Outputs under ``artifacts/evaluation/``: ``selection.json``, ``comparison.csv``, ``profiles.csv``,
@@ -69,7 +72,10 @@ def candidates(grid: pd.DataFrame, stab: pd.DataFrame, feature_set: str, ks: lis
 
 def select(table: pd.DataFrame) -> dict:
     by_scaling = table.groupby("scaling")["stability_ari"].mean().sort_values(ascending=False)
-    scaling = by_scaling.index[0]
+    # Only scalings with at least one candidate compete; without any, all do.
+    with_candidates = set(table.loc[table["candidate"], "scaling"])
+    eligible = [s for s in by_scaling.index if s in with_candidates] or list(by_scaling.index)
+    scaling = eligible[0]
     within = table.loc[table["scaling"] == scaling]
     pool = within.loc[within["candidate"]]
     rule = "highest silhouette among candidates"
