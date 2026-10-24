@@ -8,12 +8,14 @@ Two layouts are read:
   from ``NUSW-NB15_features.csv`` (or the built in list when that file is absent);
 * ``partition``: ``UNSW_NB15_training-set.csv`` and ``UNSW_NB15_testing-set.csv`` with a header row.
 
-When both are present the full records are used. Every column the model uses is converted to a
-number; cells that do not convert are counted in the audit and set to 0.
+When both are present the full records are used. ``--source`` may also name a zip file that holds
+the CSV files in any subfolder; they are extracted to ``data/raw/`` first. Every column the model
+uses is converted to a number; cells that do not convert are counted in the audit and set to 0.
 """
 
 import argparse
 import json
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -59,6 +61,20 @@ def detect_layout(source: Path) -> str:
         f"{source} holds neither {FULL_FILES} nor {list(PARTITION_FILES.values())}; "
         "download them from the UNSW-NB15 page (see the README)"
     )
+
+
+def extract(archive: Path, target: Path) -> Path:
+    """Extract the known CSV files from a zip, wherever they sit in it, into ``target``."""
+    wanted = set(FULL_FILES) | {FEATURES_FILE} | set(PARTITION_FILES.values())
+    target.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(archive) as handle:
+        for member in handle.infolist():
+            name = Path(member.filename).name
+            if name in wanted and not member.is_dir():
+                with handle.open(member) as source, (target / name).open("wb") as out:
+                    while block := source.read(1 << 20):
+                        out.write(block)
+    return target
 
 
 def full_column_names(source: Path) -> list[str]:
@@ -199,6 +215,8 @@ def audit(flows: pd.DataFrame, layout: str, issues: dict) -> dict:
 
 
 def prepare(source: Path, layout: str | None = None) -> tuple[pd.DataFrame, dict]:
+    if source.is_file() and zipfile.is_zipfile(source):
+        source = extract(source, RAW_DIR)
     layout = layout or detect_layout(source)
     raw = read_full(source) if layout == "full" else read_partition(source)
     flows, issues = normalize(raw, layout)
@@ -218,7 +236,9 @@ def load(data_dir: Path = DATA_DIR) -> pd.DataFrame:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", type=Path, default=RAW_DIR, help="folder with the UNSW-NB15 CSV files")
+    parser.add_argument(
+        "--source", type=Path, default=RAW_DIR, help="folder (or zip) with the UNSW-NB15 CSV files"
+    )
     parser.add_argument("--layout", choices=["full", "partition"], default=None)
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     args = parser.parse_args()

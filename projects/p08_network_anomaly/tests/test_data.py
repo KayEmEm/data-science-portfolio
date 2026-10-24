@@ -26,6 +26,21 @@ def test_full_layout_without_features_file_uses_builtin_names(full_folder, tmp_p
     assert flows["label"].sum() > 0
 
 
+def test_zip_source_is_extracted(full_folder, tmp_path, monkeypatch):
+    import zipfile
+
+    from flow_anomaly import data
+
+    archive = tmp_path / "unsw.zip"
+    with zipfile.ZipFile(archive, "w") as handle:
+        for path in full_folder.iterdir():
+            handle.write(path, f"CSV Files/{path.name}")
+    monkeypatch.setattr(data, "RAW_DIR", tmp_path / "raw")
+    flows, audit = data.prepare(archive)
+    assert audit["layout"] == "full"
+    assert (tmp_path / "raw" / FULL_FILES[0]).exists()
+
+
 def test_partition_layout_keeps_its_test_file(partition_folder):
     flows, audit = prepare(partition_folder)
     assert audit["layout"] == "partition"
