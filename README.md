@@ -14,6 +14,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 | 8 | [Network intrusion as anomaly detection](projects/p08_network_anomaly) | Anomaly detection | complete | UNSW-NB15 test recall 0.22 at 1% false alarm rate without labels (Isolation Forest; supervised LightGBM 0.93); the autoencoder finds other attack types and loses most recall when 1% of its training data are attacks |
 | 9 | [Customer segments](projects/p09_customer_segments) | Clustering and segmentation | complete | Online Retail II: three stable k means segments (bootstrap adjusted Rand 0.95); active repeat buyers are 29% of customers and 82% of spend; the ten rule RFM grid separates next quarter's spend better (adjusted eta squared 0.262 against 0.214) |
 | 10 | [Delivery routes and driver shifts](projects/p10_delivery_planning) | Mathematical optimization | complete | Solomon VRPTW: OR-Tools 0.9% above the best known distance in 300 s per instance (first solution heuristics 53 to 102%); driver shift MIP optimal in about 1 s for 4 days; cost aware routing lowers the week's cost by 5.6% |
+| 11 | [Illicit transactions in a payment network](projects/p11_illicit_transactions) | Graph analytics | in progress | pipeline, tests and CI on a synthetic graph; Elliptic results pending |
 
 ## Shared conventions
 
@@ -39,6 +40,7 @@ projects/
   p08_network_anomaly/
   p09_customer_segments/
   p10_delivery_planning/
+  p11_illicit_transactions/
 .github/workflows/      one CI workflow
 ```
 
