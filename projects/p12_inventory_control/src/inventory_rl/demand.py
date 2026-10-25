@@ -23,7 +23,9 @@ def fit(units, wday, closed=None) -> dict:
     wday = np.asarray(wday, dtype="int64")
     keep = np.ones(len(units), bool) if closed is None else ~np.asarray(closed, bool)
     units, wday = units[keep], wday[keep]
-    weekday_mean = np.array([units[wday == w].mean() if (wday == w).any() else units.mean() for w in range(1, 8)])
+    weekday_mean = np.array(
+        [units[wday == w].mean() if (wday == w).any() else units.mean() for w in range(1, 8)]
+    )
     weekday_mean = np.maximum(weekday_mean, 1e-3)
     mean = weekday_mean[wday - 1]
 
@@ -60,9 +62,7 @@ def check(model: dict, frame, test_start: int) -> dict:
             "mean_units": float(part["units"].mean()),
             "mean_ratio": float(part["units"].mean() / expected.mean()),
             "zero_share": float((part["units"] == 0).mean()),
-            "model_zero_share": float(
-                stats.nbinom.pmf(0, *nb_params(expected, model["dispersion"])).mean()
-            ),
+            "model_zero_share": float(stats.nbinom.pmf(0, *nb_params(expected, model["dispersion"])).mean()),
             "coverage_80": interval_coverage(model, part["units"], part["wday"], 0.80),
             "coverage_95": interval_coverage(model, part["units"], part["wday"], 0.95),
         }

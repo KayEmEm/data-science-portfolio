@@ -65,8 +65,8 @@ class Problem:
 
     @property
     def reward_scale(self) -> float:
-        """Cost of one day on which the mean demand is lost; rewards are costs over this scale."""
-        return self.lost_sale * max(self.mean_demand, 1e-3)
+        """Rewards are costs over this scale: the cost of one order, which puts a day's reward near 1."""
+        return self.order_cost if self.order_cost > 0 else self.lost_sale * max(self.mean_demand, 1e-3)
 
     @property
     def demand_dict(self) -> dict:
@@ -126,7 +126,9 @@ def draw_scenarios(
         units = demand_model.draw(problem.demand_dict, rng, n, problem.horizon, first)
     else:
         units = np.tile(np.asarray(demand, dtype="int64")[: problem.horizon], (n, 1))
-    lead = rng.choice(np.asarray(problem.lead_times), p=np.asarray(problem.lead_probs), size=(n, problem.horizon))
+    lead = rng.choice(
+        np.asarray(problem.lead_times), p=np.asarray(problem.lead_probs), size=(n, problem.horizon)
+    )
     start = np.full(n, problem.initial_stock()) if on_hand is None else np.broadcast_to(on_hand, (n,)).copy()
     return Scenarios(units, lead.astype("int64"), first.astype("int64"), start.astype("int64"))
 
@@ -218,9 +220,10 @@ class Batch:
 # Policies map a batch to the order of each episode.
 
 
-def base_stock(level):
-    level = np.asarray(level)
-    return lambda batch: np.maximum(level - batch.position, 0)
+def base_stock(level, review=1):
+    """Periodic review base stock (R, S): every ``review`` days, order up to S."""
+    level, review = np.asarray(level), np.asarray(review)
+    return lambda batch: np.where(batch.t % review == 0, np.maximum(level - batch.position, 0), 0)
 
 
 def s_s(reorder, up_to):

@@ -38,7 +38,7 @@ class InventoryEnv(gym.Env):
         if shaping not in ("cost", "potential", "service"):
             raise ValueError(f"unknown shaping {shaping!r}")
         if shaping == "potential" and base_level is None:
-            raise ValueError("potential shaping needs the base stock level")
+            raise ValueError("potential shaping needs a reference position (base_level)")
         self.problem = problem
         self.shaping = shaping
         self.base_level = base_level

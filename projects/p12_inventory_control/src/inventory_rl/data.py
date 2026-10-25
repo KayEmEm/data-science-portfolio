@@ -81,7 +81,9 @@ def read_csv(archive: zipfile.ZipFile, key: str, stores: list[str] | None = None
     with archive.open(name) as handle:
         if stores is None:
             return pd.read_csv(handle, **kwargs)
-        parts = [chunk[chunk["store_id"].isin(stores)] for chunk in pd.read_csv(handle, chunksize=2_000, **kwargs)]
+        parts = [
+            chunk[chunk["store_id"].isin(stores)] for chunk in pd.read_csv(handle, chunksize=2_000, **kwargs)
+        ]
     return pd.concat(parts, ignore_index=True)
 
 
@@ -254,7 +256,8 @@ def main() -> None:
         d = product["demand"]
         check = product["fit_check"]
         print(
-            f"{product['product']}: {product['series_id']}, mean {np.mean(d['weekday_mean']):.2f} units per day, "
+            f"{product['product']}: {product['series_id']}, "
+            f"mean {np.mean(d['weekday_mean']):.2f} units per day, "
             f"dispersion {d['dispersion']:.2f}, price {product['mean_price']:.2f}, "
             f"test year mean ratio {check['test']['mean_ratio']:.2f}, "
             f"80% interval coverage {check['test']['coverage_80']:.1%}"

@@ -141,9 +141,9 @@ class SACSettings:
 # Reward shaping study: the reward the agent trains on; every policy is scored on the true cost.
 SHAPING = {
     "cost": "negative daily cost (main runs)",
-    "potential": "plus a potential on the distance of the inventory position to the tuned base stock level",
+    "potential": "plus a potential on the distance of the position to the middle of the tuned (s, S) band",
     "service": "plus an extra penalty equal to the lost margin on each lost unit",
 }
-POTENTIAL_WEIGHT = 0.5  # potential: weight x |position - base stock level| / capacity
+POTENTIAL_WEIGHT = 0.5  # potential: -weight x |position - (s + S) / 2| / capacity
 SHAPING_PRODUCT = "medium"
 ALGORITHMS = ("ppo", "sac")
