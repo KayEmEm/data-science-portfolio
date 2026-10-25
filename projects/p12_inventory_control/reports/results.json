@@ -1,0 +1,212 @@
+{
+  "data": "M5",
+  "products": {
+    "fast": {
+      "series": "FOODS_3_586_CA_1",
+      "policies": {
+        "base_stock": {
+          "policy": "base_stock",
+          "test_cost": 351.55,
+          "test_cost_interval": [
+            348.92,
+            354.19
+          ],
+          "test_against_s_S": 0.0673,
+          "test_fill_rate": 0.9996,
+          "replay_cost": 410.71
+        },
+        "s_S": {
+          "policy": "s_S",
+          "test_cost": 329.37,
+          "test_cost_interval": [
+            327.12,
+            331.63
+          ],
+          "test_against_s_S": null,
+          "test_fill_rate": 0.9996,
+          "replay_cost": 326.59
+        },
+        "ppo": {
+          "policy": "fast_ppo_cost_s42",
+          "test_cost": 369.95,
+          "test_cost_interval": [
+            366.71,
+            373.19
+          ],
+          "test_against_s_S": 0.1232,
+          "test_fill_rate": 0.9992,
+          "replay_cost": 372.11
+        },
+        "sac": {
+          "policy": "fast_sac_cost_s42",
+          "test_cost": 369.23,
+          "test_cost_interval": [
+            366.1,
+            372.36
+          ],
+          "test_against_s_S": 0.121,
+          "test_fill_rate": 0.9996,
+          "replay_cost": 364.27
+        }
+      }
+    },
+    "medium": {
+      "series": "FOODS_3_348_CA_1",
+      "policies": {
+        "base_stock": {
+          "policy": "base_stock",
+          "test_cost": 161.6,
+          "test_cost_interval": [
+            160.81,
+            162.38
+          ],
+          "test_against_s_S": 0.2731,
+          "test_fill_rate": 0.998,
+          "replay_cost": 150.76
+        },
+        "s_S": {
+          "policy": "s_S",
+          "test_cost": 126.94,
+          "test_cost_interval": [
+            125.19,
+            128.68
+          ],
+          "test_against_s_S": null,
+          "test_fill_rate": 0.9898,
+          "replay_cost": 126.38
+        },
+        "ppo": {
+          "policy": "medium_ppo_cost_s42",
+          "test_cost": 151.41,
+          "test_cost_interval": [
+            149.23,
+            153.59
+          ],
+          "test_against_s_S": 0.1928,
+          "test_fill_rate": 0.9976,
+          "replay_cost": 131.79
+        },
+        "sac": {
+          "policy": "medium_sac_cost_s42",
+          "test_cost": 153.01,
+          "test_cost_interval": [
+            150.54,
+            155.48
+          ],
+          "test_against_s_S": 0.2054,
+          "test_fill_rate": 0.9996,
+          "replay_cost": 129.79
+        }
+      }
+    },
+    "slow": {
+      "series": "HOBBIES_1_010_CA_1",
+      "policies": {
+        "base_stock": {
+          "policy": "base_stock",
+          "test_cost": 125.44,
+          "test_cost_interval": [
+            123.17,
+            127.72
+          ],
+          "test_against_s_S": 0.1383,
+          "test_fill_rate": 0.903,
+          "replay_cost": 104.77
+        },
+        "s_S": {
+          "policy": "s_S",
+          "test_cost": 110.21,
+          "test_cost_interval": [
+            108.65,
+            111.76
+          ],
+          "test_against_s_S": null,
+          "test_fill_rate": 0.9724,
+          "replay_cost": 89.49
+        },
+        "ppo": {
+          "policy": "slow_ppo_cost_s42",
+          "test_cost": 128.89,
+          "test_cost_interval": [
+            127.07,
+            130.7
+          ],
+          "test_against_s_S": 0.1695,
+          "test_fill_rate": 0.9917,
+          "replay_cost": 117.0
+        },
+        "sac": {
+          "policy": "slow_sac_cost_s42",
+          "test_cost": 165.4,
+          "test_cost_interval": [
+            161.69,
+            169.1
+          ],
+          "test_against_s_S": 0.5008,
+          "test_fill_rate": 0.9988,
+          "replay_cost": 147.36
+        }
+      }
+    }
+  },
+  "shaping": {
+    "cost": {
+      "seeds": 1,
+      "test_cost": 151.41
+    },
+    "potential": {
+      "seeds": 1,
+      "test_cost": 154.87
+    },
+    "service": {
+      "seeds": 1,
+      "test_cost": 156.25
+    }
+  },
+  "dp_validation": {
+    "product": "slow",
+    "lead_time": 3,
+    "capacity": 29,
+    "expected_optimal": 102.46616011659172,
+    "optimal": {
+      "mean": 103.07556031849307,
+      "half_width": 0.814480556331954
+    },
+    "s_S": {
+      "mean": 106.73689196917803,
+      "half_width": 0.801536824842682,
+      "gap": 3.661331650684934,
+      "gap_half_width": 0.42890517354549373,
+      "gap_share": 0.03552085129949126,
+      "params": {
+        "s": 2,
+        "S": 29
+      }
+    },
+    "base_stock": {
+      "mean": 121.96463517123284,
+      "half_width": 1.1281334852419036,
+      "gap": 18.889074852739736,
+      "gap_half_width": 0.6979457267926326,
+      "gap_share": 0.18325464149187645,
+      "params": {
+        "R": 42,
+        "S": 29
+      }
+    },
+    "ppo": {
+      "mean": 128.49342417808214,
+      "half_width": 0.9422437053131679,
+      "gap": 25.417863859589065,
+      "gap_half_width": 0.7684820359774689,
+      "gap_share": 0.24659447672222623,
+      "params": {
+        "run": "slow_ppo_fixedlead_s42",
+        "seed_gaps": {
+          "slow_ppo_fixedlead_s42": 0.24659447672222623
+        }
+      }
+    },
+    "episodes": 400
+  }
+}

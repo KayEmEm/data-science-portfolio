@@ -15,6 +15,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 | 9 | [Customer segments](projects/p09_customer_segments) | Clustering and segmentation | complete | Online Retail II: three stable k means segments (bootstrap adjusted Rand 0.95); active repeat buyers are 29% of customers and 82% of spend; the ten rule RFM grid separates next quarter's spend better (adjusted eta squared 0.262 against 0.214) |
 | 10 | [Delivery routes and driver shifts](projects/p10_delivery_planning) | Mathematical optimization | complete | Solomon VRPTW: OR-Tools 0.9% above the best known distance in 300 s per instance (first solution heuristics 53 to 102%); driver shift MIP optimal in about 1 s for 4 days; cost aware routing lowers the week's cost by 5.6% |
 | 11 | [Illicit transactions in a payment network](projects/p11_illicit_transactions) | Graph analytics | complete | Elliptic test illicit F1 0.799 with LightGBM on transaction features (GraphSAGE 0.697, GCN 0.458, baseline 0.428); every model drops to F1 0.03 or less after the dark market shutdown; illicit transactions cluster in Louvain communities |
+| 12 | [Inventory control](projects/p12_inventory_control) | Reinforcement learning | complete | M5 store CA_1, three products (sample run): tuned (s, S) costs least for all three; PPO costs 12 to 19% more and SAC 12 to 50% more; (s, S) is 3.6% above the exact optimum on the slow product with a fixed lead time |
 
 ## Shared conventions
 
@@ -42,6 +43,7 @@ projects/
   p09_customer_segments/
   p10_delivery_planning/
   p11_illicit_transactions/
+  p12_inventory_control/
 .github/workflows/      one CI workflow
 ```
 
