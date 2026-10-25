@@ -22,6 +22,7 @@ jobs:
       p07: ${{ steps.filter.outputs.p07 }}
       p08: ${{ steps.filter.outputs.p08 }}
       p09: ${{ steps.filter.outputs.p09 }}
+      p10: ${{ steps.filter.outputs.p10 }}
     steps:
       - uses: actions/checkout@v4
       - id: filter
@@ -66,6 +67,10 @@ jobs:
             p09:
               - 'common/**'
               - 'projects/p09_customer_segments/**'
+              - '.github/workflows/**'
+            p10:
+              - 'common/**'
+              - 'projects/p10_delivery_planning/**'
               - '.github/workflows/**'
 
   common:
@@ -270,4 +275,26 @@ jobs:
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on synthetic order lines (no data download)
+        run: make smoke
+
+  p10_delivery_planning:
+    needs: changes
+    if: needs.changes.outputs.p10 == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/p10_delivery_planning
+    env:
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # Gurobi (the optional extra) is installed too: its pip license is size limited, and the small
+      # scenarios of the smoke run fit it.
+      - run: python -m pip install -e ../../common -e ".[dev,gurobi]"
+      - run: make lint
+      - run: make test
+      - name: Smoke run of the full pipeline on synthetic instances (no data download)
         run: make smoke

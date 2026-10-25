@@ -1,0 +1,65 @@
+{
+  "data": "Solomon benchmark",
+  "instances": 56,
+  "main_config": "gls_60s",
+  "routing": {
+    "cheapest_arc": {
+      "mean_gap": 1.0162239058552875,
+      "median_gap": 0.82576346474181,
+      "max_gap": 2.499745374299779,
+      "found": 49.0,
+      "mean_seconds": 7.507767857142858
+    },
+    "cheapest_insertion": {
+      "mean_gap": 0.5293728757432008,
+      "median_gap": 0.5445908449432183,
+      "max_gap": 0.9426620280891638,
+      "found": 56.0,
+      "mean_seconds": 0.015910714285714285
+    },
+    "gls_10s": {
+      "mean_gap": 0.04069702850945532,
+      "median_gap": 0.03931911465307936,
+      "max_gap": 0.16789073572993174,
+      "found": 56.0,
+      "mean_seconds": 10.001000000000001
+    },
+    "gls_60s": {
+      "mean_gap": 0.01941513193725568,
+      "median_gap": 0.019831576435304643,
+      "max_gap": 0.060584650710942434,
+      "found": 56.0,
+      "mean_seconds": 60.000767857142854
+    },
+    "gls_300s": {
+      "mean_gap": 0.0090379662177579,
+      "median_gap": 0.004778928841016161,
+      "max_gap": 0.05731319554848957,
+      "found": 56.0,
+      "mean_seconds": 300.0014464285714
+    }
+  },
+  "shifts_full": {
+    "highs": {
+      "status": "maxTimeLimit",
+      "cost": 27685.478260869564,
+      "seconds": 300.3,
+      "gap": 0.014747018527660995
+    },
+    "cbc": {
+      "status": "maxTimeLimit",
+      "cost": 27933.252173913042,
+      "seconds": 300.55,
+      "gap": 0.02348642291375322
+    }
+  },
+  "greedy_full": 27924.45217391304,
+  "fleet": {
+    "cheapest": {
+      "objective": "cost_aware",
+      "cap": 20,
+      "total": 33983.70608695652
+    },
+    "benchmark_plan_total": 35982.09826086956
+  }
+}
