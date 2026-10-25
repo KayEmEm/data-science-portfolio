@@ -2,8 +2,11 @@
 PYTHON ?= python
 YEAR ?= 2024
 SMOKE_DIR := artifacts/smoke
+# Share of the trips of every month kept by `make sample`; outputs stay under artifacts/sample.
+SAMPLE ?= 0.05
+SAMPLE_DIR := artifacts/sample
 
-.PHONY: install data ingest build report notebook dashboard screenshots all smoke test lint clean
+.PHONY: install data ingest build report notebook dashboard screenshots all sample smoke test lint clean
 
 install:
 	$(PYTHON) -m pip install -e ../../common -e ".[dev,notebook,screenshots]"
@@ -31,6 +34,11 @@ screenshots:         ## needs Playwright Chromium (playwright install chromium) 
 	$(PYTHON) -m taxi_demand.screenshots
 
 all: data build report notebook
+
+sample:              ## warehouse and report on a seeded share SAMPLE of the trips (files from make data)
+	$(PYTHON) -m taxi_demand.warehouse --year $(YEAR) --sample $(SAMPLE) --warehouse $(SAMPLE_DIR)/taxi.duckdb \
+		--marts $(SAMPLE_DIR)/marts
+	$(PYTHON) -m taxi_demand.report --warehouse $(SAMPLE_DIR)/taxi.duckdb --reports $(SAMPLE_DIR)/reports
 
 smoke:               ## the whole pipeline on synthetic files; outputs stay under artifacts/smoke
 	$(PYTHON) -m taxi_demand.synthetic $(SMOKE_DIR)/raw

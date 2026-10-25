@@ -20,6 +20,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common import sample
 
 from customer_segments.categories import OTHER, categorize_series
 from customer_segments.config import (
@@ -202,9 +203,17 @@ def main() -> None:
         "--source", type=Path, default=RAW_DIR, help="the workbook, a CSV export, a zip, or their folder"
     )
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
+    sample.add_arguments(parser, "customers, each with all their order lines, stratified by country")
     args = parser.parse_args()
     lines, audit = prepare(args.source)
+    # The audit describes the whole source; the sample is drawn after it.
+    n_full = lines["customer_id"].nunique()
+    keep = sample.select(lines["customer_id"], args.sample, args.sample_seed, strata=lines["country"])
+    lines = lines[keep].reset_index(drop=True)
     write(lines, audit, args.data_dir)
+    sample.record(
+        args.data_dir, args.sample, args.sample_seed, "customer", n_full, lines["customer_id"].nunique()
+    )
     print(
         f"{audit['rows_read']:,} rows read (documented {DOCUMENTED_ROWS:,}), {audit['rows_kept']:,} kept; "
         f"{audit['customers']:,} customers, {audit['invoices']:,} invoices, "

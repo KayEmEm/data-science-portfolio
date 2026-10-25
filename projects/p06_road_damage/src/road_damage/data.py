@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from PIL import Image
+from portfolio_common import sample
 
 from road_damage.config import (
     ANNOTATIONS_PATH,
@@ -230,15 +231,37 @@ def write_dataset_yaml(root: Path, path: Path, test: str) -> Path:
     return path
 
 
+def sample_blocks(
+    images: pd.DataFrame, boxes: pd.DataFrame, share: float, seed: int, block: int = SPLIT_BLOCK
+) -> tuple[pd.DataFrame, pd.DataFrame, int, int]:
+    """Keep whole blocks of consecutive images, stratified by country and split.
+
+    The blocks are those of ``assign_splits``, so the sample keeps neighbor images apart in the
+    same way as the full split. Returns the kept images, their boxes and the number of blocks
+    before and after the sample.
+    """
+    position = images.sort_values("image_id").groupby("country").cumcount()
+    key = images["country"] + "_" + (position // block).astype(str)
+    keep = sample.select(key, share, seed, strata=images["country"] + "_" + images["split"])
+    kept = images[keep].copy()
+    kept.attrs = images.attrs
+    kept_boxes = boxes[boxes["image_id"].isin(kept["image_id"])].copy()
+    return kept, kept_boxes, key.nunique(), key[keep].nunique()
+
+
 def build(
     source: Path,
     data_dir: Path = DATA_DIR,
     countries: tuple[str, ...] = COUNTRIES,
     block: int = SPLIT_BLOCK,
+    share: float = sample.FULL,
+    seed: int = sample.DEFAULT_SEED,
 ) -> dict:
     roots = extract(source, data_dir / EXTRACT_DIR.name)
     images, boxes = scan(roots, countries)
     images["split"] = assign_splits(images, block=block)
+    images, boxes, before, after = sample_blocks(images, boxes, share, seed, block)
+    sample.record(data_dir, share, seed, "block of consecutive images", before, after)
     empty = {f"{c} {s}" for c in countries for s in SPLIT_FRACTIONS} - set(
         images["country"] + " " + images["split"]
     )
@@ -260,9 +283,12 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--countries", nargs="+", default=list(COUNTRIES))
     parser.add_argument("--block", type=int, default=SPLIT_BLOCK, help="consecutive images kept in one split")
+    sample.add_arguments(parser, "blocks of consecutive images, stratified by country and split")
     args = parser.parse_args()
     args.data_dir.mkdir(parents=True, exist_ok=True)
-    counts = build(args.source, args.data_dir, tuple(args.countries), args.block)
+    counts = build(
+        args.source, args.data_dir, tuple(args.countries), args.block, args.sample, args.sample_seed
+    )
     print(yaml.safe_dump(counts, sort_keys=False))
 
 

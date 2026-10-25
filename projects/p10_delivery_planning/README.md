@@ -99,6 +99,8 @@ make all       # download, about 100 minutes of routing searches on 4 cores, 40 
 make smoke     # the same pipeline on 12 small synthetic instances, about 2 minutes
 ```
 
+`make sample SAMPLE=0.25` runs the same pipeline on a seeded share of the real instances, stratified by class; the seven instances of the shift week are always kept. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and has not been run; the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
+
 `make train` and `make evaluate` store each search and each MIP under `artifacts/` and skip it when run again. Guided local search stops at a time limit, so a repeated run on another machine can give slightly different routes and costs. `make smoke` writes under `artifacts/smoke/`; its numbers say nothing about the benchmark.
 
 ## Layout

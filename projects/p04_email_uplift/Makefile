@@ -1,8 +1,12 @@
 # Project 4: email campaign uplift. Run from this folder.
 PYTHON ?= python
 SMOKE_DIR := artifacts/smoke
+# Share of customers kept by `make sample`, stratified by arm; outputs stay under artifacts/sample.
+SAMPLE ?= 0.25
+SAMPLE_DIR := artifacts/sample
+SAMPLE_LABEL = hillstrom-2008 sample $(SAMPLE)
 
-.PHONY: install data experiment train evaluate observational report all smoke test lint clean
+.PHONY: install data experiment train evaluate observational report all sample smoke test lint clean
 
 install:             ## this project, the shared common package and CausalML (may compile from source)
 	$(PYTHON) -m pip install -e ../../common -e ".[dev,causalml]"
@@ -26,6 +30,17 @@ report:              ## tables, figures and the readout memo under reports/
 	$(PYTHON) -m email_uplift.report
 
 all: data experiment train evaluate observational report
+
+sample:              ## the whole pipeline on a seeded share SAMPLE of the real customers
+	$(PYTHON) -m email_uplift.data --sample $(SAMPLE) --out $(SAMPLE_DIR)/customers.parquet
+	$(PYTHON) -m email_uplift.experiment --customers $(SAMPLE_DIR)/customers.parquet --artifacts $(SAMPLE_DIR) \
+		--data-label "$(SAMPLE_LABEL)"
+	$(PYTHON) -m email_uplift.train --customers $(SAMPLE_DIR)/customers.parquet --artifacts $(SAMPLE_DIR) \
+		--data-label "$(SAMPLE_LABEL)"
+	$(PYTHON) -m email_uplift.evaluate --artifacts $(SAMPLE_DIR)
+	$(PYTHON) -m email_uplift.observational --customers $(SAMPLE_DIR)/customers.parquet \
+		--artifacts $(SAMPLE_DIR) --data-label "$(SAMPLE_LABEL)"
+	$(PYTHON) -m email_uplift.report --artifacts $(SAMPLE_DIR) --reports $(SAMPLE_DIR)/reports
 
 smoke:               ## the whole pipeline on synthetic customers; outputs stay under artifacts/smoke
 	$(PYTHON) -m email_uplift.synthetic $(SMOKE_DIR)/customers.parquet --n 6000

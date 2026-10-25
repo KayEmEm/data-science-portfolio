@@ -22,8 +22,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import vrplib
+from portfolio_common import sample
 
-from delivery_planning.config import CLASSES, DATA_DIR, MANIFEST_PATH, RAW_DIR, SCALE, SOURCE_URL
+from delivery_planning.config import CLASSES, DATA_DIR, MANIFEST_PATH, RAW_DIR, SCALE, SOURCE_URL, WEEK
 
 
 class SchemaError(ValueError):
@@ -208,6 +209,20 @@ def instance_names(raw_dir: Path) -> list[str]:
     return sorted(p.stem for p in raw_dir.glob("*.vrp"))
 
 
+def sample_instances(raw_dir: Path, share: float, seed: int) -> tuple[int, int]:
+    """Keep a share of whole instances, stratified by class, and remove the others from ``raw_dir``.
+
+    The instances of the shift week are always kept. ``raw_dir`` must be a copy for the sample run,
+    never the folder of the full data. Returns the number of instances before and after.
+    """
+    names = pd.Series(instance_names(raw_dir))
+    keep = sample.select(names, share, seed, strata=names.map(instance_class), always=WEEK)
+    for name in names[~keep]:
+        for suffix in (".vrp", ".sol"):
+            (raw_dir / f"{name}{suffix}").unlink(missing_ok=True)
+    return len(names), int(keep.sum())
+
+
 def load(raw_dir: Path, name: str) -> tuple[Instance, dict]:
     return read_instance(raw_dir / f"{name}.vrp"), read_solution(raw_dir / f"{name}.sol")
 
@@ -246,14 +261,20 @@ def main() -> None:
     parser.add_argument("--source", type=Path, help="folder or zip with the .vrp and .sol files")
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--sha", choices=["pinned", "any"], default="pinned")
+    sample.add_arguments(parser, "instances, stratified by class (the shift week is always kept)")
     args = parser.parse_args()
     raw_dir = args.data_dir / "raw"
+    if args.sample < sample.FULL and raw_dir.resolve() == RAW_DIR.resolve():
+        parser.error("a sample removes instances from its data folder; give a --data-dir other than data")
     if args.source:
         copy_source(args.source, raw_dir)
     elif args.sha == "pinned":
         download(raw_dir)
     if args.sha == "pinned":
         verify(raw_dir)
+    if args.sample < sample.FULL:
+        before, after = sample_instances(raw_dir, args.sample, args.sample_seed)
+        sample.record(args.data_dir, args.sample, args.sample_seed, "instance", before, after)
     table = audit(raw_dir)
     table.to_csv(args.data_dir / "instances.csv", index=False)
     summary = {

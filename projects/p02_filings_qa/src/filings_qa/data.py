@@ -7,6 +7,7 @@ import urllib.request
 from pathlib import Path
 
 import pandas as pd
+from portfolio_common import sample
 
 from filings_qa.config import (
     DOCUMENTS_FILE,
@@ -113,11 +114,16 @@ def documents_in_scope(questions: pd.DataFrame, documents: pd.DataFrame) -> pd.D
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-pdfs", action="store_true", help="download the question files only")
+    parser.add_argument("--out-dir", type=Path, default=QUESTIONS_PATH.parent)
+    sample.add_arguments(parser, "filings, each with all the questions on it")
     args = parser.parse_args()
 
     questions = normalize_questions(
         read_jsonl(fetch(f"{SOURCE_BASE}/data/{QUESTIONS_FILE}", RAW_DIR / QUESTIONS_FILE))
     )
+    n_filings = questions["doc_name"].nunique()
+    questions = questions[sample.select(questions["doc_name"], args.sample, args.sample_seed)]
+    questions = questions.reset_index(drop=True)
     documents = documents_in_scope(
         questions,
         normalize_documents(
@@ -129,12 +135,14 @@ def main() -> None:
             fetch(f"{SOURCE_BASE}/pdfs/{name}.pdf", PDF_DIR / f"{name}.pdf")
             print(f"\r{i}/{len(documents)} filings", end="", flush=True)
         print()
-    QUESTIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    questions.to_parquet(QUESTIONS_PATH, index=False)
-    documents.to_parquet(DOCUMENTS_PATH, index=False)
+    sample.record(
+        args.out_dir, args.sample, args.sample_seed, "filing", n_filings, questions["doc_name"].nunique()
+    )
+    questions.to_parquet(args.out_dir / QUESTIONS_PATH.name, index=False)
+    documents.to_parquet(args.out_dir / DOCUMENTS_PATH.name, index=False)
     print(
         f"{len(questions)} questions on {len(documents)} filings of "
-        f"{documents['company'].nunique()} companies written to {QUESTIONS_PATH.parent}"
+        f"{documents['company'].nunique()} companies written to {args.out_dir}"
     )
 
 

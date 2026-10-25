@@ -2,8 +2,11 @@
 PYTHON ?= python
 SOURCE ?=
 SMOKE_DIR := artifacts/smoke
+# Share of time step graphs kept by `make sample`, stratified by split; outputs stay under artifacts/sample.
+SAMPLE ?= 0.5
+SAMPLE_DIR := artifacts/sample
 
-.PHONY: install data network train evaluate report neo4j-export neo4j-load all smoke test lint clean
+.PHONY: install data network train evaluate report neo4j-export neo4j-load all sample smoke test lint clean
 
 install:             ## this project and the shared common package
 	$(PYTHON) -m pip install -e ../../common -e ".[dev]"
@@ -30,6 +33,15 @@ neo4j-load:          ## load into a running Neo4j server and run neo4j/queries.c
 	$(PYTHON) -m illicit_graph.neo4j_export load
 
 all: data network train evaluate report neo4j-export
+
+sample:              ## the whole pipeline on a seeded share SAMPLE of the time steps (or SOURCE=<folder or zip>)
+	$(PYTHON) -m illicit_graph.data $(if $(SOURCE),--source $(SOURCE)) --data-dir $(SAMPLE_DIR)/data --sample $(SAMPLE)
+	$(PYTHON) -m illicit_graph.network --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR)
+	$(PYTHON) -m illicit_graph.train --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR)
+	$(PYTHON) -m illicit_graph.evaluate --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR) \
+		--data-label "Elliptic sample $(SAMPLE)"
+	$(PYTHON) -m illicit_graph.report --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR) \
+		--reports $(SAMPLE_DIR)/reports
 
 smoke:               ## the whole pipeline on a synthetic graph; outputs stay under artifacts/smoke
 	$(PYTHON) -m illicit_graph.synthetic $(SMOKE_DIR)/raw --nodes 12000

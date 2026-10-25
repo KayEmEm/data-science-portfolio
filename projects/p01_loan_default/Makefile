@@ -1,8 +1,11 @@
 # Project 1: loan default risk. Run from this folder.
 PYTHON ?= python
 SMOKE_DIR := artifacts/smoke
+# Share of clients kept by `make sample`; outputs stay under artifacts/sample.
+SAMPLE ?= 0.25
+SAMPLE_DIR := artifacts/sample
 
-.PHONY: install data features train evaluate all smoke test lint api docker clean
+.PHONY: install data features train evaluate all sample smoke test lint api docker clean
 
 install:
 	$(PYTHON) -m pip install -e ../../common -e ".[dev]"
@@ -20,6 +23,13 @@ evaluate:
 	$(PYTHON) -m loan_default.evaluate
 
 all: data features train evaluate
+
+sample:          ## the whole pipeline on a seeded share SAMPLE of the real clients (archive already in data/raw)
+	$(PYTHON) -m loan_default.data --skip-download --sample $(SAMPLE) --out $(SAMPLE_DIR)/clients.parquet
+	$(PYTHON) -m loan_default.features --clients $(SAMPLE_DIR)/clients.parquet --out $(SAMPLE_DIR)/features.parquet
+	$(PYTHON) -m loan_default.train --features $(SAMPLE_DIR)/features.parquet --artifacts $(SAMPLE_DIR) \
+		--data-label "uci-credit-card-default sample $(SAMPLE)"
+	$(PYTHON) -m loan_default.evaluate --artifacts $(SAMPLE_DIR) --reports $(SAMPLE_DIR)/reports
 
 smoke:           ## full pipeline on a synthetic table; outputs stay under artifacts/smoke
 	$(PYTHON) -m loan_default.synthetic $(SMOKE_DIR)/clients.parquet --n 3000

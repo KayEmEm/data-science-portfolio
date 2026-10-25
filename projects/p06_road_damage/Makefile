@@ -3,8 +3,11 @@ PYTHON ?= python
 SOURCE ?= data/raw
 BACKUP ?=
 SMOKE_DIR := artifacts/smoke
+# Share of image blocks kept by `make sample`; outputs stay under artifacts/sample.
+SAMPLE ?= 0.2
+SAMPLE_DIR := artifacts/sample
 
-.PHONY: install data train evaluate export report all demo smoke test lint clean
+.PHONY: install data train evaluate export report all demo sample smoke test lint clean
 
 install:             ## this project with the demo extra and the shared common package
 	$(PYTHON) -m pip install -e ../../common -e ".[dev,demo]"
@@ -26,6 +29,14 @@ all: data train evaluate report
 
 demo:                ## Gradio upload demo on http://127.0.0.1:7860
 	$(PYTHON) -m road_damage.app
+
+sample:              ## the whole pipeline on a seeded share SAMPLE of the image blocks, with the full training settings
+	$(PYTHON) -m road_damage.data --source $(SOURCE) --data-dir $(SAMPLE_DIR)/data --sample $(SAMPLE)
+	$(PYTHON) -m road_damage.train --data $(SAMPLE_DIR)/data/yolo/dataset.yaml --artifacts $(SAMPLE_DIR) \
+		$(if $(BACKUP),--backup $(BACKUP))
+	$(PYTHON) -m road_damage.evaluate --yolo-dir $(SAMPLE_DIR)/data/yolo --artifacts $(SAMPLE_DIR)
+	$(PYTHON) -m road_damage.export --yolo-dir $(SAMPLE_DIR)/data/yolo --artifacts $(SAMPLE_DIR)
+	$(PYTHON) -m road_damage.report --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR) --reports $(SAMPLE_DIR)/reports
 
 smoke:               ## the whole pipeline on synthetic zips, from untrained weights; outputs stay under artifacts/smoke
 	$(PYTHON) -m road_damage.synthetic $(SMOKE_DIR)/raw

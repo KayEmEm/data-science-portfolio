@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common import sample
 
 from email_uplift.config import (
     ARM_COL,
@@ -102,10 +103,15 @@ def main() -> None:
     parser.add_argument("--source", type=Path, help="a local copy of the CSV (plain or gzip) instead")
     parser.add_argument("--out", type=Path, default=CUSTOMERS_PATH)
     parser.add_argument("--expected-rows", type=int, default=EXPECTED_ROWS, help="0 skips the row check")
+    sample.add_arguments(parser, "customers (rows of the source file), stratified by arm")
     args = parser.parse_args()
     source = args.source if args.source else download()
     customers = normalize(pd.read_csv(source), expected_rows=args.expected_rows or None)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
+    n_full = len(customers)
+    row = pd.Series(np.arange(n_full))
+    keep = sample.select(row, args.sample, args.sample_seed, strata=customers[ARM_COL])
+    customers = customers[keep].reset_index(drop=True)
+    sample.record(args.out.parent, args.sample, args.sample_seed, "customer", n_full, len(customers))
     customers.to_parquet(args.out, index=False)
     shares = customers[ARM_COL].value_counts().to_dict()
     print(f"{len(customers):,} customers written to {args.out}; arms {shares}")

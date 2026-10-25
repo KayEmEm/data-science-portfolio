@@ -59,6 +59,8 @@ make all                # data, features, train, evaluate (under one minute in t
 make smoke              # the same pipeline on a synthetic table, no download
 ```
 
+`make sample SAMPLE=0.25` runs the same pipeline on a seeded share of the real clients, stratified by default. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and has not been run; the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
+
 `make smoke` writes everything under `artifacts/smoke/`. Its numbers come from random synthetic data and say nothing about credit risk.
 
 ### Scoring API
