@@ -19,10 +19,14 @@ def test_end_to_end_on_a_synthetic_archive(archive, tmp_path):
     run("inventory_rl.dp", *common, "--quick", cwd=tmp_path)
     run("inventory_rl.train", *common, "--quick", "--jobs", "2", cwd=tmp_path)
     stored = {p: p.stat().st_mtime_ns for p in (artifacts / "runs").rglob("info.json")}
-    assert len(stored) == 8  # 3 products x 2 algorithms x 1 seed, and 2 shaping runs
+    assert (
+        len(stored) == 9
+    )  # 3 products x 2 algorithms x 1 seed, 2 shaping runs, 1 run with a fixed lead time
     # A second run finds every run stored and trains nothing again.
     run("inventory_rl.train", *common, "--quick", cwd=tmp_path)
     assert {p: p.stat().st_mtime_ns for p in (artifacts / "runs").rglob("info.json")} == stored
+    run("inventory_rl.dp", *common, "--quick", cwd=tmp_path)  # again, now with the fixed lead time PPO run
+    assert "ppo" in json.loads((artifacts / "dp" / "result.json").read_text())
     run("inventory_rl.evaluate", *common, "--quick", "--data-label", "synthetic", cwd=tmp_path)
     run("inventory_rl.report", *common, "--reports", str(reports), "--validation-episodes", "4", cwd=tmp_path)
     run("inventory_rl.animate", "--artifacts", str(artifacts), "--reports", str(reports), cwd=tmp_path)

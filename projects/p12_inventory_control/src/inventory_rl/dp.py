@@ -12,7 +12,9 @@ Two checks follow:
    induction within its sampling error (a check of the environment's dynamics and costs);
 2. the tuned (s, S) and base stock policies, tuned the same way as in the main study but on
    this fixed lead time, are compared with the optimum: the gap shows how much any policy,
-   learned or not, could gain over them in this setting.
+   learned or not, could gain over them in this setting;
+3. when the PPO runs of this setting are trained (``train.py``, ``*_fixedlead_*``), the run
+   with the lowest validation cost is scored the same way, and the gap of every seed is listed.
 
 Output: ``artifacts/dp/result.json``.
 """
@@ -29,7 +31,7 @@ from inventory_rl import demand as demand_model
 from inventory_rl.baselines import tune
 from inventory_rl.config import ARTIFACTS_DIR, DATA_DIR, TEST_SEED, TEST_START, settings
 from inventory_rl.data import load_demand, load_products
-from inventory_rl.dynamics import Problem, base_stock, s_s, seeded_scenarios, simulate
+from inventory_rl.dynamics import Problem, base_stock, model_policy, s_s, seeded_scenarios, simulate
 
 DP_PRODUCT = "slow"
 DP_LEAD = 3
@@ -109,7 +111,7 @@ def dp_policy(policy: np.ndarray):
     return act
 
 
-def run(product: dict, first_wday: int, episodes: int, tune_episodes: int) -> dict:
+def run(product: dict, first_wday: int, episodes: int, tune_episodes: int, artifacts: Path) -> dict:
     problem = replace(Problem.from_product(product), lead_times=(DP_LEAD,), lead_probs=(1.0,))
     policy, value = solve(problem, first_wday)
     start = problem.initial_stock()
@@ -128,6 +130,22 @@ def run(product: dict, first_wday: int, episodes: int, tune_episodes: int) -> di
         "expected_optimal": expected,
     }
     costs = {name: simulate(problem, scenarios, p)["totals"]["cost"] for name, p in policies.items()}
+    learned = {}
+    for path in sorted((artifacts / "runs").glob(f"{DP_PRODUCT}_ppo_fixedlead_s*/best.zip")):
+        from stable_baselines3 import PPO
+
+        cost = simulate(problem, scenarios, model_policy(PPO.load(path, device="cpu")))["totals"]["cost"]
+        learned[path.parent.name] = float((cost - costs["optimal"]).mean() / costs["optimal"].mean())
+        costs.setdefault("ppo_runs", []).append(cost)
+    if learned:
+        validation = {
+            name: json.loads((artifacts / "runs" / name / "info.json").read_text())["best_validation_cost"]
+            for name in learned
+        }
+        chosen = min(validation, key=validation.get)
+        costs["ppo"] = costs.pop("ppo_runs")[list(learned).index(chosen)]
+        tuned["ppo"] = {"run": chosen, "seed_gaps": learned}
+    costs.pop("ppo_runs", None)
     for name, cost in costs.items():
         sd = float(cost.std(ddof=1))
         out[name] = {"mean": float(cost.mean()), "half_width": 1.96 * sd / np.sqrt(len(cost))}
@@ -154,7 +172,9 @@ def main() -> None:
     product = {p["product"]: p for p in load_products(args.data_dir)}[DP_PRODUCT]
     demand = load_demand(args.data_dir)
     first_wday = int(demand[(demand["product"] == DP_PRODUCT) & (demand["d"] == TEST_START)]["wday"].iloc[0])
-    result = run(product, first_wday, 4 * run_settings.test_episodes, run_settings.tune_episodes)
+    result = run(
+        product, first_wday, 4 * run_settings.test_episodes, run_settings.tune_episodes, args.artifacts
+    )
     out = args.artifacts / "dp"
     out.mkdir(parents=True, exist_ok=True)
     (out / "result.json").write_text(json.dumps(result, indent=2))

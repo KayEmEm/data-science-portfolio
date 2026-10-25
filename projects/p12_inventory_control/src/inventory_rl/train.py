@@ -4,7 +4,9 @@ Runs:
 
 * main: every product x {PPO, SAC} x the seeds of the run settings, trained on the cost reward;
 * shaping study: PPO on ``config.SHAPING_PRODUCT`` with the ``potential`` and ``service``
-  rewards and the shaping seeds; its ``cost`` runs are the main runs.
+  rewards and the shaping seeds; its ``cost`` runs are the main runs;
+* fixed lead time: PPO on the slow product with the lead time of ``dp.py``, scored there
+  against the exact optimum.
 
 Every ``eval_every`` steps the current policy is scored by its mean yearly cost on the
 validation scenarios (a seed stream of its own); the checkpoint with the lowest cost is kept as
@@ -18,7 +20,7 @@ import json
 import os
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import numpy as np
@@ -37,12 +39,14 @@ from inventory_rl.config import (
     settings,
 )
 from inventory_rl.data import load_products
+from inventory_rl.dp import DP_LEAD, DP_PRODUCT
 
 EXPERIMENT = "p12_inventory_control"
 
 
-def run_name(product: str, algorithm: str, shaping: str, seed: int) -> str:
-    return f"{product}_{algorithm}_{shaping}_s{seed}"
+def run_name(product: str, algorithm: str, shaping: str, seed: int, lead: str = "random") -> str:
+    middle = "fixedlead" if lead == "fixed" else shaping
+    return f"{product}_{algorithm}_{middle}_s{seed}"
 
 
 def planned_runs(products: list[str], run: RunSettings) -> list[dict]:
@@ -58,7 +62,16 @@ def planned_runs(products: list[str], run: RunSettings) -> list[dict]:
             for shaping in ("potential", "service")
             for s in run.shaping_seeds
         ]
-    return [r | {"name": run_name(r["product"], r["algorithm"], r["shaping"], r["seed"])} for r in plan]
+    if DP_PRODUCT in products:
+        # PPO on the setting of the dynamic program (dp.py), to measure its gap to the exact optimum.
+        plan += [
+            {"product": DP_PRODUCT, "algorithm": "ppo", "shaping": "cost", "seed": s, "lead": "fixed"}
+            for s in run.shaping_seeds
+        ]
+    plan = [{"lead": "random"} | r for r in plan]
+    return [
+        r | {"name": run_name(r["product"], r["algorithm"], r["shaping"], r["seed"], r["lead"])} for r in plan
+    ]
 
 
 def build_model(algorithm: str, env, seed: int, steps: int):
@@ -110,6 +123,8 @@ def train_one(spec: dict, product: dict, base_level: int, run: RunSettings, out:
 
     torch.set_num_threads(1)
     problem = Problem.from_product(product)
+    if spec["lead"] == "fixed":
+        problem = replace(problem, lead_times=(DP_LEAD,), lead_probs=(1.0,))
     validation = seeded_scenarios(problem, VALIDATION_SEED, run.validation_episodes)
     steps = run.ppo_steps if spec["algorithm"] == "ppo" else run.sac_steps
     n_envs = run.n_envs if spec["algorithm"] == "ppo" else 1

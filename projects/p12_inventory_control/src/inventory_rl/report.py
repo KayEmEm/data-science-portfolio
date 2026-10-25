@@ -249,7 +249,9 @@ def dp_lines(artifacts: Path) -> tuple[list[str], dict | None]:
                 "Policy": name,
                 "Simulated cost per year ($)": f"{dp[key]['mean']:.2f} +- {dp[key]['half_width']:.2f}",
                 "Above the optimum": "" if key == "optimal" else f"{100 * dp[key]['gap_share']:+.1f}%",
-                "Parameters": "" if key == "optimal" else str(dp[key]["params"]),
+                "Parameters": ""
+                if key == "optimal"
+                else dp[key]["params"].get("run", str(dp[key]["params"])),
             }
             for key, name in (
                 ("optimal", "Optimal (dynamic programming)"),

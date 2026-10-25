@@ -4,8 +4,10 @@ from inventory_rl.train import planned_runs
 
 def test_plan_has_main_and_shaping_runs():
     plan = planned_runs(["fast", "medium", "slow"], FULL)
-    main = [r for r in plan if r["shaping"] == "cost"]
+    main = [r for r in plan if r["shaping"] == "cost" and r["lead"] == "random"]
     assert len(main) == 3 * 2 * len(FULL.seeds)
+    fixed = [r for r in plan if r["lead"] == "fixed"]
+    assert len(fixed) == len(FULL.shaping_seeds) and {r["product"] for r in fixed} == {"slow"}
     shaping = [r for r in plan if r["shaping"] != "cost"]
     assert len(shaping) == 2 * len(FULL.shaping_seeds)
     assert {r["product"] for r in shaping} == {SHAPING_PRODUCT}

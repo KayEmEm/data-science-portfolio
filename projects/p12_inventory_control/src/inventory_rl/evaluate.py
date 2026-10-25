@@ -194,7 +194,11 @@ def main() -> None:
     for product in products:
         print(f"{product['product']}:")
         result = evaluate_product(
-            product, demand, args.artifacts, run, [r for r in plan if r["product"] == product["product"]]
+            product,
+            demand,
+            args.artifacts,
+            run,
+            [r for r in plan if r["product"] == product["product"] and r["lead"] == "random"],
         )
         tables.append(result["table"])
         selection[product["product"]] = {"selected": result["selected"], "best_rl": result["best_rl"]}
