@@ -99,6 +99,8 @@ make all                # data, train (all models, 5 windows), evaluate, report:
 make smoke              # the same pipeline on a synthetic archive, no download
 ```
 
+`make sample SAMPLE=0.1` runs the same pipeline on a seeded share of the real item and store series with all their days, stratified by store and department; the upper levels are aggregated from the kept series. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and has not been run; the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
+
 Without the neural extra (`pip install -e ../../common -e ".[dev]"`), the pipeline skips N-HiTS and runs every other model. Run times per window on 4 CPU cores: LightGBM 11 minutes, N-HiTS 4 minutes, Prophet and ETS under a minute each ([`reports/timings.json`](reports/timings.json)). The LightGBM step needs about 7 GB of memory. `make smoke` writes everything under `artifacts/smoke/`; its numbers come from synthetic data and say nothing about Walmart.
 
 ## Layout

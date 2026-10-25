@@ -64,6 +64,8 @@ make all                     # data, parse, index, retrieval evaluation, section
 make smoke                   # the free pipeline on a synthetic corpus: no download, no paid call
 ```
 
+`make sample SAMPLE=0.25` runs the same pipeline on a seeded share of the real filings, each with all the questions on it. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and has not been run; the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
+
 `make index` builds the dense index in about 90 minutes on four CPU cores. Paid and local model steps are separate:
 
 ```bash

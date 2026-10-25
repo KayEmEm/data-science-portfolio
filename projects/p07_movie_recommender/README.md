@@ -79,6 +79,8 @@ make all SOURCE=path/to/ml-32m.zip   # or without SOURCE to download from GroupL
 make smoke                           # the same pipeline on a synthetic archive, no download
 ```
 
+`make sample SAMPLE=0.05` runs the same pipeline on a seeded share of the real users with all their ratings; the time split is computed on the sample. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and has not been run; the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
+
 Run times on 4 CPU cores: data 40 seconds; per stage, ALS 75 seconds per setting, the two tower model 15 minutes for 6 epochs, the ranker under a minute ([`reports/results.md`](reports/results.md#run-times-seconds)). `make train` stores every finished step under `artifacts/` and skips it when run again, and the two tower model saves each epoch, so a stopped run resumes. `make smoke` writes everything under `artifacts/smoke/`; its numbers come from synthetic data and say nothing about MovieLens.
 
 ## Layout

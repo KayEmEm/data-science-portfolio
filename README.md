@@ -21,6 +21,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 * **README first:** problem, dataset and license, approach, headline result, and how to reproduce in three commands or fewer.
 * **Reproducibility:** one `pyproject.toml` with pinned dependencies per project, a fixed seed, and a `Makefile` with `data`, `train` and `evaluate` targets.
 * **Data:** downloaded by a script and never committed. Only synthetic fixtures enter the repository.
+* **Sample runs:** `make sample SAMPLE=<share>` runs a project's real pipeline on a seeded share of whole units (clients, filings, series, users, time step graphs), through `portfolio_common.sample`. Outputs stay under `artifacts/sample/`; the committed results come from the full data.
 * **Quality gates:** ruff and pytest in GitHub Actions; each project job runs only when its folder or `common/` changes.
 * **Tracking:** MLflow, stored locally.
 * **Honest evaluation:** a simple baseline next to the main model, with the metric chosen for the business question.

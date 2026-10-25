@@ -72,6 +72,8 @@ make dashboard          # http://localhost:8501
 
 `make screenshots` refreshes the dashboard images (needs Playwright Chromium). `make smoke` runs the warehouse and the report on synthetic files under `artifacts/smoke/`; its numbers come from random data and say nothing about New York taxis.
 
+`make sample SAMPLE=0.05` runs the same pipeline on a seeded share of the real trips of every month, selected at the warehouse build. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and has not been run; the committed results come from the full data. The warehouse step takes the same option as `--sample` and `--sample-seed`.
+
 ## Layout
 
 ```
