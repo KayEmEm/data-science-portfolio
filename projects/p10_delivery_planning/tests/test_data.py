@@ -89,7 +89,10 @@ def test_schedule_waits_for_windows_and_departs_as_late_as_possible(r101):
     for route in best["routes"]:
         times = schedule(instance, route)
         assert all(t >= instance.ready[c] for c, t in zip(route, times["starts"], strict=True))
-        assert times["depart"] + instance.dist[0, route[0]] <= times["starts"][0]
+        # No departure saves time: the earliest one waits at least as long somewhere on the route.
+        assert times["ret"] - times["depart"] <= times["ret"] - (
+            times["starts"][0] - instance.dist[0, route[0]]
+        )
         # Departing at ``depart`` still meets every window and returns at the same time.
         clock, prev = times["depart"], 0
         for node in route:

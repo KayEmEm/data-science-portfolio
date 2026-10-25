@@ -106,7 +106,7 @@ def figure_time(summary: pd.DataFrame, path: Path) -> None:
     ax.set_xticks(seconds, [f"{s} s" for s in seconds])
     ax.set_xlabel("Time limit of guided local search (one CPU core)")
     ax.set_ylabel("Mean gap to best known distance (%)")
-    ax.set_title("Longer search closes the gap, most slowly on the R2 and RC2 classes")
+    ax.set_title("Mean gap to the best known distance by search time")
     ax.legend(frameon=False, fontsize=8, ncol=2)
     fig.savefig(path)
     plt.close(fig)
@@ -123,6 +123,8 @@ def draw_routes(ax, instance, routes, title: str) -> None:
     ax.set_aspect("equal")
     ax.set_xticks([])
     ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
 
 def figure_routes(raw_dir: Path, artifacts: Path, config: str, path: Path) -> None:
@@ -164,7 +166,8 @@ def figure_solvers(comparison: pd.DataFrame, path: Path) -> None:
                 if row["status"].iloc[0] != "optimal":
                     ax.text(x, row["seconds"].iloc[0], "limit", ha="center", va="bottom", fontsize=7)
             else:
-                ax.text(x, 0, "not run", ha="center", va="bottom", fontsize=7, rotation=90)
+                ax.text(x, 0.02, "not run", ha="center", va="bottom", fontsize=7, rotation=90,
+                        transform=ax.get_xaxis_transform())  # fmt: skip
     labels = [
         f"{s}\n{int(r.days)} days, {int(r.drivers)} drivers\n{int(r.binaries)} binaries"
         for s, r in comparison.dropna(subset=["binaries"])
@@ -175,8 +178,11 @@ def figure_solvers(comparison: pd.DataFrame, path: Path) -> None:
     ]
     ax.set_xticks(range(len(scenarios)), labels, fontsize=8)
     ax.set_yscale("log")
-    ax.set_ylabel('Wall time (s, log scale); "limit": stopped at the time limit')
-    ax.set_title("Shift model: solve time per solver, one thread each")
+    ax.set_ylabel("Wall time (s, log scale)")
+    ax.set_title(
+        'Shift model: solve time per solver, one thread each ("limit": stopped at the time limit)',
+        fontsize=10,
+    )
     ax.legend(frameon=False)
     fig.savefig(path)
     plt.close(fig)
@@ -204,7 +210,9 @@ def figure_roster(roster: pd.DataFrame, drivers: pd.DataFrame, path: Path) -> No
     ax.set_xticks([d * 24 * 60 + 12 * 60 for d in range(7)], DAY_NAMES)
     ax.set_xlim(0, 7 * 24 * 60)
     ax.grid(False)
-    ax.set_title("Week roster from the shift model: blue full time, orange part time, red agency")
+    ax.set_title(
+        "Week roster from the shift model: blue full time, orange part time, red agency (duties may overlap)"
+    )
     fig.savefig(path)
     plt.close(fig)
 
