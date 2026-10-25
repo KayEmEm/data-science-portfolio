@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 
 import pandas as pd
+from portfolio_common import sample
 
 from loan_default.config import (
     CLIENTS_PATH,
@@ -79,15 +80,18 @@ def read_spreadsheet(path: Path) -> pd.DataFrame:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-download", action="store_true", help="use the archive already in data/raw")
+    parser.add_argument("--out", type=Path, default=CLIENTS_PATH)
+    sample.add_arguments(parser, "clients, stratified by default")
     args = parser.parse_args()
     if not args.skip_download:
         download()
     clients = read_spreadsheet(find_spreadsheet(RAW_DIR))
-    CLIENTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    clients.to_parquet(CLIENTS_PATH, index=False)
-    print(
-        f"{len(clients):,} clients written to {CLIENTS_PATH}; default rate {clients[TARGET_COL].mean():.4f}"
-    )
+    n_full = len(clients)
+    keep = sample.select(clients[ID_COL], args.sample, args.sample_seed, strata=clients[TARGET_COL])
+    clients = clients[keep].reset_index(drop=True)
+    sample.record(args.out.parent, args.sample, args.sample_seed, "client", n_full, len(clients))
+    clients.to_parquet(args.out, index=False)
+    print(f"{len(clients):,} clients written to {args.out}; default rate {clients[TARGET_COL].mean():.4f}")
 
 
 if __name__ == "__main__":

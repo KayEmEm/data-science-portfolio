@@ -7,13 +7,19 @@ from pathlib import Path
 
 import duckdb
 import pandas as pd
+import pyarrow.parquet as pq
 from pandas.tseries.holiday import USFederalHolidayCalendar
+from portfolio_common import sample
 
 from taxi_demand import config
 
 BUILD_SQL = files("taxi_demand.sql")
 ANALYSIS_SQL = BUILD_SQL / "analysis"
 MART_TABLES = ["zones", "quality_audit", "fact_hourly", "zone_monthly", "daily"]
+# Columns whose hash, with the seed, selects the trips of a sample run.
+SAMPLE_KEY = ["VendorID", "tpep_pickup_datetime", "tpep_dropoff_datetime", "PULocationID", "DOLocationID",
+              "total_amount"]  # fmt: skip
+SAMPLE_BUCKETS = 1_000_000
 
 
 def build_parameters(year: int) -> dict[str, float]:
@@ -43,16 +49,28 @@ def holiday_table(year: int) -> pd.DataFrame:
     return pd.DataFrame({"holiday_date": days.date})
 
 
-def register_raw(con: duckdb.DuckDBPyConnection, raw_dir: Path, year: int = config.YEAR) -> None:
+def register_raw(
+    con: duckdb.DuckDBPyConnection,
+    raw_dir: Path,
+    year: int = config.YEAR,
+    share: float = sample.FULL,
+    seed: int = sample.DEFAULT_SEED,
+) -> None:
     """Expose the raw files as the views raw_trips, raw_zones and raw_weather.
 
     The relation API takes the paths as values, so no path is spliced into SQL text.
     union_by_name aligns monthly files whose column order or numeric types differ.
+    With ``share`` below 1, raw_trips keeps the trips whose seeded hash falls in the first
+    ``share`` of the hash range: about that share of every month, the same trips on every run.
     """
     trip_files = sorted(str(p) for p in (raw_dir / "trips").glob("*.parquet"))
     if not trip_files:
         raise FileNotFoundError(f"no trip files under {raw_dir / 'trips'}; run make data first")
-    con.read_parquet(trip_files, union_by_name=True).to_view("raw_trips")
+    trips = con.read_parquet(trip_files, union_by_name=True)
+    if share < sample.FULL:
+        key = ", ".join(SAMPLE_KEY)
+        trips = trips.filter(f"hash({key}, {int(seed)}) % {SAMPLE_BUCKETS} < {int(share * SAMPLE_BUCKETS)}")
+    trips.to_view("raw_trips")
     con.read_csv(str(raw_dir / "taxi_zone_lookup.csv"), header=True).to_view("raw_zones")
     con.read_csv(str(raw_dir / "weather_central_park.csv"), header=True, all_varchar=True).to_view(
         "raw_weather"
@@ -60,12 +78,19 @@ def register_raw(con: duckdb.DuckDBPyConnection, raw_dir: Path, year: int = conf
     con.register("holidays", holiday_table(year))
 
 
-def build(raw_dir: Path, warehouse: Path, marts_dir: Path, year: int) -> None:
+def build(
+    raw_dir: Path,
+    warehouse: Path,
+    marts_dir: Path,
+    year: int,
+    share: float = sample.FULL,
+    seed: int = sample.DEFAULT_SEED,
+) -> None:
     warehouse.parent.mkdir(parents=True, exist_ok=True)
     marts_dir.mkdir(parents=True, exist_ok=True)
     params = build_parameters(year)
     with duckdb.connect(str(warehouse)) as con:
-        register_raw(con, raw_dir, year)
+        register_raw(con, raw_dir, year, share, seed)
         for name in build_scripts():
             started = time.perf_counter()
             sql = (BUILD_SQL / name).read_text(encoding="utf-8")
@@ -74,6 +99,10 @@ def build(raw_dir: Path, warehouse: Path, marts_dir: Path, year: int) -> None:
             print(f"{name}: {time.perf_counter() - started:.1f} s")
         for table in MART_TABLES:
             con.table(table).write_parquet(str(marts_dir / f"{table}.parquet"))
+        if share < sample.FULL:
+            before = sum(pq.ParquetFile(p).metadata.num_rows for p in (raw_dir / "trips").glob("*.parquet"))
+            after = con.execute("SELECT count(*) FROM raw_trips").fetchall()[0][0]
+            sample.record(warehouse.parent, share, seed, "trip", before, after)
         kept = con.execute("SELECT trips, share FROM quality_audit WHERE check_result = 'kept'").fetchone()
     print(
         f"warehouse {warehouse}; {kept[0]:,} usable trips ({kept[1]:.1%} of source rows); "
@@ -92,8 +121,9 @@ def main() -> None:
     parser.add_argument("--warehouse", type=Path, default=config.WAREHOUSE_PATH)
     parser.add_argument("--marts", type=Path, default=config.MARTS_DIR)
     parser.add_argument("--year", type=int, default=config.YEAR)
+    sample.add_arguments(parser, "trips of every month")
     args = parser.parse_args()
-    build(args.raw_dir, args.warehouse, args.marts, args.year)
+    build(args.raw_dir, args.warehouse, args.marts, args.year, args.sample, args.sample_seed)
 
 
 if __name__ == "__main__":
