@@ -41,6 +41,7 @@ def test_graph_networks_learn_the_synthetic_signal(prepared):
             m["train"],
             m["validation"],
             m["train_steps"],
+            m["validation_steps"],
             QUICK_GNN,
             0,
         )

@@ -82,7 +82,8 @@ def masks(nodes: pd.DataFrame) -> dict[str, np.ndarray]:
     split = nodes["split"].astype(str).to_numpy()
     labelled = nodes["label"].to_numpy() != UNKNOWN
     return {name: labelled & (split == name) for name in ("train", "validation", "test")} | {
-        "train_steps": split == "train"
+        "train_steps": split == "train",
+        "validation_steps": split == "validation",
     }
 
 
@@ -150,6 +151,7 @@ def run_model(
                 m["train"],
                 m["validation"],
                 m["train_steps"],
+                m["validation_steps"],
                 gnn_settings,
                 seed,
             )
