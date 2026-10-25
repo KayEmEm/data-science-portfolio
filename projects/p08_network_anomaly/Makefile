@@ -2,8 +2,11 @@
 PYTHON ?= python
 SOURCE ?=
 SMOKE_DIR := artifacts/smoke
+# Share of flows kept by `make sample`, stratified by attack type and split; outputs stay under artifacts/sample.
+SAMPLE ?= 0.1
+SAMPLE_DIR := artifacts/sample
 
-.PHONY: install data train evaluate report all smoke test lint clean
+.PHONY: install data train evaluate report all sample smoke test lint clean
 
 install:             ## this project and the shared common package
 	$(PYTHON) -m pip install -e ../../common -e ".[dev]"
@@ -21,6 +24,14 @@ report:              ## tables, figures, triage example and results.json under r
 	$(PYTHON) -m flow_anomaly.report
 
 all: data train evaluate report
+
+sample:              ## the whole pipeline on a seeded share SAMPLE of the flows (or SOURCE=<folder>)
+	$(PYTHON) -m flow_anomaly.data $(if $(SOURCE),--source $(SOURCE)) --data-dir $(SAMPLE_DIR)/data --sample $(SAMPLE)
+	$(PYTHON) -m flow_anomaly.train --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR)
+	$(PYTHON) -m flow_anomaly.evaluate --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR) \
+		--data-label "UNSW-NB15 sample $(SAMPLE)"
+	$(PYTHON) -m flow_anomaly.report --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR) \
+		--reports $(SAMPLE_DIR)/reports
 
 smoke:               ## the whole pipeline on synthetic flows; outputs stay under artifacts/smoke
 	$(PYTHON) -m flow_anomaly.synthetic $(SMOKE_DIR)/raw --rows 12000

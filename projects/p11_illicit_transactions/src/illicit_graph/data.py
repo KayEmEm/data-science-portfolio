@@ -22,6 +22,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common import sample
 
 from illicit_graph.config import (
     AGGREGATED,
@@ -39,6 +40,7 @@ from illicit_graph.config import (
     NODES_PATH,
     RAW_DIR,
     RAW_FILES,
+    SHUTDOWN_STEP,
     SPLIT_STEPS,
     SPLITS,
     TIME_STEPS,
@@ -199,6 +201,25 @@ def prepare(source: Path) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     return nodes, edges, audit(nodes, edges, issues)
 
 
+def sample_steps(
+    nodes: pd.DataFrame, edges: pd.DataFrame, share: float, seed: int
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Keep whole time step graphs, stratified by split, and renumber the edge positions.
+
+    No edge joins two time steps, so every kept graph is complete. The steps just before and at
+    the dark market shutdown are always kept, so the test period has steps on both sides of it.
+    """
+    keep = sample.select(
+        nodes["time_step"], share, seed, strata=nodes["split"], always=[SHUTDOWN_STEP - 1, SHUTDOWN_STEP]
+    )
+    position = np.full(len(nodes), -1)
+    position[keep] = np.arange(int(keep.sum()))
+    kept_edges = edges[keep[edges["src"].to_numpy()] & keep[edges["dst"].to_numpy()]].copy()
+    kept_edges["src"] = position[kept_edges["src"].to_numpy()]
+    kept_edges["dst"] = position[kept_edges["dst"].to_numpy()]
+    return nodes[keep].reset_index(drop=True), kept_edges.reset_index(drop=True)
+
+
 def write(nodes: pd.DataFrame, edges: pd.DataFrame, report: dict, data_dir: Path) -> None:
     data_dir.mkdir(parents=True, exist_ok=True)
     nodes.to_parquet(data_dir / NODES_PATH.name, index=False)
@@ -214,9 +235,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, default=RAW_DIR, help="folder (or zip) with the CSV files")
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
+    sample.add_arguments(parser, "time step graphs, stratified by split")
     args = parser.parse_args()
     nodes, edges, report = prepare(args.source)
+    # The audit describes the whole source; the sample is drawn after it.
+    n_steps = nodes["time_step"].nunique()
+    nodes, edges = sample_steps(nodes, edges, args.sample, args.sample_seed)
     write(nodes, edges, report, args.data_dir)
+    steps = nodes["time_step"].nunique()
+    sample.record(args.data_dir, args.sample, args.sample_seed, "time step graph", n_steps, steps)
     found = report["counts_found"]
     print(
         f"{found['nodes']:,} transactions, {found['edges']:,} edges, {found['illicit']:,} illicit, "

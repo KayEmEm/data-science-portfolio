@@ -20,6 +20,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common import sample
 
 from flow_anomaly.config import (
     ATTACK_NAMES,
@@ -246,9 +247,16 @@ def main() -> None:
     )
     parser.add_argument("--layout", choices=["full", "partition"], default=None)
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
+    sample.add_arguments(parser, "flows, stratified by attack type and split")
     args = parser.parse_args()
     flows, report = prepare(args.source, args.layout)
+    # The audit describes the whole source; the sample is drawn after it.
+    n_full = len(flows)
+    strata = flows["attack_cat"].astype(str) + "_" + flows["split"].astype(str)
+    flows = flows[sample.select(pd.Series(np.arange(n_full)), args.sample, args.sample_seed, strata=strata)]
+    flows = flows.reset_index(drop=True)
     write(flows, report, args.data_dir)
+    sample.record(args.data_dir, args.sample, args.sample_seed, "flow", n_full, len(flows))
     print(
         f"{report['layout']}: {report['rows']:,} flows, {report['attacks']:,} attacks "
         f"({report['attack_share']:.1%}); counts match the documented ones: "

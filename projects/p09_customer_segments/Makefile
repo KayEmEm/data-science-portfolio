@@ -2,8 +2,11 @@
 PYTHON ?= python
 SOURCE ?=
 SMOKE_DIR := artifacts/smoke
+# Share of customers kept by `make sample`, each with all their order lines; outputs stay under artifacts/sample.
+SAMPLE ?= 0.25
+SAMPLE_DIR := artifacts/sample
 
-.PHONY: install data train evaluate report all smoke test lint clean
+.PHONY: install data train evaluate report all sample smoke test lint clean
 
 install:             ## this project and the shared common package
 	$(PYTHON) -m pip install -e ../../common -e ".[dev]"
@@ -21,6 +24,14 @@ report:              ## tables, figures, segment_map.html and results.json under
 	$(PYTHON) -m customer_segments.report
 
 all: data train evaluate report
+
+sample:              ## the whole pipeline on a seeded share SAMPLE of the customers (or SOURCE=<file, zip or folder>)
+	$(PYTHON) -m customer_segments.data $(if $(SOURCE),--source $(SOURCE)) --data-dir $(SAMPLE_DIR)/data \
+		--sample $(SAMPLE)
+	$(PYTHON) -m customer_segments.train --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR)
+	$(PYTHON) -m customer_segments.evaluate --artifacts $(SAMPLE_DIR)
+	$(PYTHON) -m customer_segments.report --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR) \
+		--reports $(SAMPLE_DIR)/reports --data-label "Online Retail II sample $(SAMPLE)"
 
 smoke:               ## the whole pipeline on synthetic order lines; outputs stay under artifacts/smoke
 	$(PYTHON) -m customer_segments.synthetic $(SMOKE_DIR)/raw --customers 600

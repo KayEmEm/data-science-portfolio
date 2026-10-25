@@ -2,8 +2,11 @@
 PYTHON ?= python
 SOURCE ?=
 SMOKE_DIR := artifacts/smoke
+# Share of instances kept by `make sample`, stratified by class; outputs stay under artifacts/sample.
+SAMPLE ?= 0.25
+SAMPLE_DIR := artifacts/sample
 
-.PHONY: install data train evaluate report planner all smoke test lint clean
+.PHONY: install data train evaluate report planner all sample smoke test lint clean
 
 install:             ## this project, the shared common package and the optional Gurobi package
 	$(PYTHON) -m pip install -e ../../common -e ".[dev,gurobi]"
@@ -24,6 +27,13 @@ planner:             ## the Streamlit planner on the downloaded instances
 	$(PYTHON) -m streamlit run planner/app.py
 
 all: data train evaluate report
+
+sample:              ## the whole pipeline on a seeded share SAMPLE of the instances (copied from data/raw)
+	$(PYTHON) -m delivery_planning.data --source data/raw --data-dir $(SAMPLE_DIR)/data --sample $(SAMPLE)
+	$(PYTHON) -m delivery_planning.train --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR)
+	$(PYTHON) -m delivery_planning.evaluate --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR)
+	$(PYTHON) -m delivery_planning.report --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR) \
+		--reports $(SAMPLE_DIR)/reports --data-label "Solomon benchmark sample $(SAMPLE)"
 
 smoke:               ## the whole pipeline on synthetic instances; outputs stay under artifacts/smoke
 	$(PYTHON) -m delivery_planning.synthetic $(SMOKE_DIR)/source
