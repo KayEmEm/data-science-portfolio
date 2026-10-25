@@ -153,19 +153,19 @@ def image_tables(result: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
         ]
     )
     clean = result["results"]["clean"]
-    worst = min(
-        (n for n in result["results"] if n != "clean"), key=lambda n: result["results"][n]["none"]["map50"]
-    )
+    # The patch is the attack that works in the physical world; PGD at 2/255 is the weakest digital one.
+    shown = [n for n in ("adversarial_patch", "pgd_2") if n in result["results"]]
     defense = [
         {
             "Target": "Road damage detector (project 6)",
             "Defense": DEFENSE_LABELS[d],
             "Clean metric": "mAP50",
             "Clean change": clean[d]["map50"] - clean["none"]["map50"],
-            "Attack metric": f"mAP50 under {IMAGE_LABELS.get(worst, worst)}",
-            "Attacked before": result["results"][worst]["none"]["map50"],
-            "Attacked after": result["results"][worst][d]["map50"],
+            "Attack metric": f"mAP50 under {IMAGE_LABELS.get(name, name)}",
+            "Attacked before": result["results"][name]["none"]["map50"],
+            "Attacked after": result["results"][name][d]["map50"],
         }
+        for name in shown
         for d in DEFENSE_LABELS
         if d != "none"
     ]

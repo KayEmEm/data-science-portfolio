@@ -41,4 +41,4 @@ def test_attacks_stay_in_budget_and_pipeline_runs(sources, data_dir, tmp_path):
     assert set(summary["results"]["clean"]) == set(images.DEFENSES)
     assert (tmp_path / "images" / "patch.png").exists()
     grid, defense = report.image_tables(summary)
-    assert len(grid) == len(summary["results"]) and len(defense) == len(images.DEFENSES) - 1
+    assert len(grid) == len(summary["results"]) and len(defense) == 2 * (len(images.DEFENSES) - 1)
