@@ -69,7 +69,9 @@ class Model:
         return np.asarray(self.detector.score(self.prep.transform(flows)), dtype="float64")
 
 
-def perturb(flows: pd.DataFrame, f_bytes: float, f_packets: float, f_duration: float, ttl=None) -> pd.DataFrame:
+def perturb(
+    flows: pd.DataFrame, f_bytes: float, f_packets: float, f_duration: float, ttl=None
+) -> pd.DataFrame:
     """Flows after padding, extra packets and delays; the derived features are scaled to match.
 
     Sizes and counts only grow. ``smean`` (mean sent packet size), ``sload`` (sent bits per second)
@@ -106,7 +108,9 @@ def grid(budget: FlowBudget, ttl_values: list, groups: str) -> list[tuple]:
     return [(*s, t) for s, t in itertools.product(sizes, ttls)]
 
 
-def evade(model: Model, flows: pd.DataFrame, budget: FlowBudget, ttl_values: list, groups: str) -> pd.DataFrame:
+def evade(
+    model: Model, flows: pd.DataFrame, budget: FlowBudget, ttl_values: list, groups: str
+) -> pd.DataFrame:
     """The lowest score each flow reaches within the budget, and whether it falls below the threshold."""
     best = model.score(flows)
     best_change = np.zeros(len(flows), dtype=int)
@@ -137,7 +141,9 @@ def random_changes(flows: pd.DataFrame, budget: FlowBudget, ttl_values: list, se
     return pd.concat(parts).loc[flows.index]
 
 
-def fit_supervised(flows, prep, settings, seed, train_rows, val_rows, extra: pd.DataFrame | None = None) -> Model:
+def fit_supervised(
+    flows, prep, settings, seed, train_rows, val_rows, extra: pd.DataFrame | None = None
+) -> Model:
     labels = flows["label"].to_numpy()
     train = flows.iloc[train_rows]
     y = labels[train_rows]
@@ -199,10 +205,16 @@ def hop_skip_jump(model: Model, test: pd.DataFrame, rows: int, quick: bool) -> d
         q = 1 / (1 + np.exp(-(np.log(s / (1 - s)) - logit_threshold)))  # 0.5 at the alarm threshold
         return np.column_stack([1 - q, q])
 
-    classifier = BlackBoxClassifier(predict, x.shape[1:], 2, clip_values=(float(low.min()), float(high.max())))
+    classifier = BlackBoxClassifier(
+        predict, x.shape[1:], 2, clip_values=(float(low.min()), float(high.max()))
+    )
     attack = HopSkipJump(
-        classifier, targeted=False, max_iter=2 if quick else 10, max_eval=200 if quick else 1000,
-        init_eval=20 if quick else 100, verbose=False,
+        classifier,
+        targeted=False,
+        max_iter=2 if quick else 10,
+        max_eval=200 if quick else 1000,
+        init_eval=20 if quick else 100,
+        verbose=False,
     )
     adversarial = attack.generate(x)
     evaded = predict(adversarial)[:, 1] < 0.5
@@ -311,7 +323,9 @@ def run(data_dir: Path, artifacts: Path, quick: bool = False, budget: FlowBudget
     val_rows = labeled_sample(flows, "validation", 200_000, SEED)
     fit_rows = fit_sample(flows, 0.01, 20_000 if quick else FIT_ROWS, SEED)
     prep = FlowPreprocessor().fit(flows.iloc[fit_rows])
-    no_ttl_prep = FlowPreprocessor(numeric=[c for c in NUMERIC if c not in TTL_FEATURES]).fit(flows.iloc[fit_rows])
+    no_ttl_prep = FlowPreprocessor(numeric=[c for c in NUMERIC if c not in TTL_FEATURES]).fit(
+        flows.iloc[fit_rows]
+    )
     train_attacks = flows.iloc[train_rows]
     train_attacks = train_attacks[train_attacks["label"] == 1]
     models = {
@@ -321,20 +335,34 @@ def run(data_dir: Path, artifacts: Path, quick: bool = False, budget: FlowBudget
         ),
         "lightgbm_adversarial": calibrate(
             fit_supervised(
-                flows, prep, supervised, SEED, train_rows, val_rows,
+                flows,
+                prep,
+                supervised,
+                SEED,
+                train_rows,
+                val_rows,
                 extra=random_changes(train_attacks, budget, ttl_values, SEED),
             ),
             flows,
         ),
-        "iforest": calibrate(Model("iforest", prep, Forest(forest, SEED).fit(prep.transform(flows.iloc[fit_rows])), 0.0), flows),
+        "iforest": calibrate(
+            Model("iforest", prep, Forest(forest, SEED).fit(prep.transform(flows.iloc[fit_rows])), 0.0), flows
+        ),
     }
     summary = {"ttl_values": [int(v) for v in ttl_values], "models": {}}
     for name, model in models.items():
-        result = {"clean": clean_metrics(model, test), "evasion": evasion_rows(model, test, budget, ttl_values, rows)}
+        result = {
+            "clean": clean_metrics(model, test),
+            "evasion": evasion_rows(model, test, budget, ttl_values, rows),
+        }
         summary["models"][name] = result
-        print(f"flows {name}: recall {result['clean']['recall']:.3f}, evasion (all) "
-              f"{result['evasion']['groups']['all']['evasion_rate']:.3f}")
-    summary["hop_skip_jump"] = {"lightgbm": hop_skip_jump(models["lightgbm"], test, 40 if quick else ART_ROWS, quick)}
+        print(
+            f"flows {name}: recall {result['clean']['recall']:.3f}, evasion (all) "
+            f"{result['evasion']['groups']['all']['evasion_rate']:.3f}"
+        )
+    summary["hop_skip_jump"] = {
+        "lightgbm": hop_skip_jump(models["lightgbm"], test, 40 if quick else ART_ROWS, quick)
+    }
     summary["poisoning"] = poisoning(flows, test, 0.01, forest, quick)
     summary["smoothing"] = smoothing(flows, supervised, SmoothingSettings(), quick)
     summary["largest_change_l2"] = change_size(flows, budget)

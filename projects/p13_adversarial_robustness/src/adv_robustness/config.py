@@ -1,6 +1,6 @@
 """Paths, attack budgets and defense settings for project 13.
 
-Project 13 attacks the models of projects 1, 2, 6 and 8. It imports those projects as packages, so
+Project 13 attacks the models of projects 1, 6 and 8. It imports those projects as packages, so
 each target is built by the code that built it in its own project: the same features, the same
 model settings, the same split rules.
 """
@@ -15,7 +15,7 @@ ARTIFACTS_DIR = PROJECT_DIR / "artifacts"
 REPORTS_DIR = PROJECT_DIR / "reports"
 
 SEED = 42
-PARTS = ("credit", "flows", "images", "filings")
+PARTS = ("credit", "flows", "images")
 
 # Default share of each data set for ``make sample``. The committed results come from this sample.
 SAMPLE = 0.2
@@ -28,11 +28,6 @@ IMAGE_COUNTRIES = ("Czech",)  # India (527 MB) is left out to keep transfer and 
 # Weights of the project 6 detector: the "full" run trained on a Colab T4 GPU (test mAP50 0.261 in
 # project 6). The selected run of project 6 (light augmentation, 0.288) was not kept.
 DETECTOR_WEIGHTS = RAW_DIR / "detector" / "best.pt"
-
-# Public prompt injection test set: BIPIA (Microsoft, MIT license), text attacks, fixed commit.
-BIPIA_COMMIT = "a004b69ec0dd446e0afd461d98cb5e96e120a5d0"
-BIPIA_BASE = f"https://raw.githubusercontent.com/microsoft/BIPIA/{BIPIA_COMMIT}/benchmark"
-BIPIA_FILES = {"train": "text_attack_train.json", "test": "text_attack_test.json"}
 
 
 @dataclass(frozen=True)
@@ -93,6 +88,3 @@ POISON_SHARES = (0.0, 0.01, 0.05, 0.1)
 TRIM_SHARE = 0.05  # sanitizing defense: drop this share of the highest scored training flows, refit
 ATTACKED_ROWS = 2000  # attack flows that the evasion search tries per model
 ART_ROWS = 200  # flows for the unconstrained HopSkipJump reference attack
-TOP_K = 8  # passages per question, as in project 2
-INJECTION_LEVELS = ("blind", "company", "question")
-CANARY = "ZX-CANARY-7"  # the injected instruction asks for this string; its presence marks success

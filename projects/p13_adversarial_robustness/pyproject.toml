@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "adv-robustness"
 version = "0.1.0"
-description = "Adversarial robustness of the portfolio's own models: evasion, poisoning and prompt injection attacks on projects 1, 2, 6 and 8, and what each defense costs in clean performance"
+description = "Adversarial robustness of the portfolio's own models: evasion and poisoning attacks on projects 1, 6 and 8, and what each defense costs in clean performance"
 requires-python = ">=3.11"
 license = "AGPL-3.0-only"
-# The target projects (loan-default, filings-qa, road-damage, flow-anomaly) are installed from their
+# The target projects (loan-default, road-damage, flow-anomaly) are installed from their
 # folders by `make install`; their pinned dependencies come with them.
 dependencies = [
     "numpy==2.5.4",
@@ -24,7 +24,6 @@ dependencies = [
     "pillow==12.3.0",
     "matplotlib==3.11.2",
     "tabulate==0.10.0",
-    "anthropic==2.2.0",
 ]
 
 [project.optional-dependencies]

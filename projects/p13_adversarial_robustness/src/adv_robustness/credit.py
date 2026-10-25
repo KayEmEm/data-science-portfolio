@@ -57,7 +57,9 @@ def candidates(clients: pd.DataFrame, attack: str, budget: CreditBudget) -> pd.D
     Each candidate keeps the client id in ``CLIENT_ID`` and its position in ``row``; the client id is
     then replaced by a unique key, because the feature SQL orders by it.
     """
-    shares = np.linspace(0.0, budget.extra_payment, budget.payment_steps) if attack != "self_reported" else [0.0]
+    shares = (
+        np.linspace(0.0, budget.extra_payment, budget.payment_steps) if attack != "self_reported" else [0.0]
+    )
     fields = (
         list(itertools.product(EDUCATION_VALUES, MARRIAGE_VALUES)) if attack != "payment" else [(None, None)]
     )
@@ -86,7 +88,9 @@ def predict(model, clients: pd.DataFrame) -> np.ndarray:
     return model.predict(features)
 
 
-def attack(model, threshold: float, clients: pd.DataFrame, attack_set: str, budget: CreditBudget) -> pd.DataFrame:
+def attack(
+    model, threshold: float, clients: pd.DataFrame, attack_set: str, budget: CreditBudget
+) -> pd.DataFrame:
     """For each client, whether a change within the budget gets approval, and the cheapest such change."""
     pool = candidates(clients, attack_set, budget)
     pool["p"] = predict(model, pool)
@@ -110,8 +114,13 @@ def manipulated_copies(model, threshold: float, clients: pd.DataFrame, budget: C
 
 
 def fit_variant(
-    train_clients: pd.DataFrame, settings: RunSettings, costs: CostAssumptions, drop: tuple, base=None,
-    base_threshold: float | None = None, budget: CreditBudget | None = None,
+    train_clients: pd.DataFrame,
+    settings: RunSettings,
+    costs: CostAssumptions,
+    drop: tuple,
+    base=None,
+    base_threshold: float | None = None,
+    budget: CreditBudget | None = None,
 ):
     """A project 1 model on the training clients; with ``base``, also on manipulated defaulter copies."""
     rows = train_clients
@@ -140,7 +149,9 @@ class DroppingModel:
         return self.fitted.predict(features.drop(columns=self.drop))
 
 
-def outcome(y: np.ndarray, p: np.ndarray, exposure: np.ndarray, threshold: float, costs: CostAssumptions) -> dict:
+def outcome(
+    y: np.ndarray, p: np.ndarray, exposure: np.ndarray, threshold: float, costs: CostAssumptions
+) -> dict:
     approved = p < threshold
     gain = np.where(y == 0, costs.margin * exposure, -costs.loss_given_default * exposure)
     return {
@@ -156,7 +167,9 @@ def run(data_dir: Path, artifacts: Path, quick: bool = False, budget: CreditBudg
     settings = RunSettings.quick() if quick else RunSettings()
     costs = CostAssumptions()
     clients = pd.read_parquet(data_dir / "credit" / "clients.parquet")
-    train, test = train_test_split(clients, test_size=settings.test_size, stratify=clients[TARGET_COL], random_state=SEED)
+    train, test = train_test_split(
+        clients, test_size=settings.test_size, stratify=clients[TARGET_COL], random_state=SEED
+    )
     train, test = train.reset_index(drop=True), test.reset_index(drop=True)
     y, exposure = test[TARGET_COL].to_numpy(), test[EXPOSURE_COL].to_numpy(dtype=float)
     summary = {"n_train": len(train), "n_test": len(test), "budget": budget.__dict__, "variants": {}}
@@ -164,9 +177,13 @@ def run(data_dir: Path, artifacts: Path, quick: bool = False, budget: CreditBudg
     base = None
     for name, spec in VARIANTS.items():
         fitted, threshold, n_copies = fit_variant(
-            train, settings, costs, spec["drop"],
+            train,
+            settings,
+            costs,
+            spec["drop"],
             base=base["model"] if spec["adversarial"] else None,
-            base_threshold=base["threshold"] if spec["adversarial"] else None, budget=budget,
+            base_threshold=base["threshold"] if spec["adversarial"] else None,
+            budget=budget,
         )
         model = DroppingModel(fitted, spec["drop"])
         p = predict(model, test.assign(row=0, cost=0.0, client=0))
@@ -189,16 +206,22 @@ def run(data_dir: Path, artifacts: Path, quick: bool = False, budget: CreditBudg
                 "flip_rate": float(flipped.mean()) if len(flipped) else 0.0,
                 "flip_rate_defaulters": float(flipped[defaulters].mean()) if defaulters.any() else 0.0,
                 "median_cost_share": float(
-                    np.median(found.loc[flipped, "cost"] / test.loc[rejected, EXPOSURE_COL].to_numpy()[flipped])
-                ) if flipped.any() else float("nan"),
+                    np.median(
+                        found.loc[flipped, "cost"] / test.loc[rejected, EXPOSURE_COL].to_numpy()[flipped]
+                    )
+                )
+                if flipped.any()
+                else float("nan"),
                 "after": outcome(y, p_after, exposure, threshold, costs),
             }
             rows.append({"variant": name, "attack": attack_set, **result["attacks"][attack_set]["after"]})
         summary["variants"][name] = result
         if name == "baseline":
             base = {"model": fitted, "threshold": threshold}
-        print(f"credit {name}: AUC {result['clean']['roc_auc']:.3f}, flip rate (both) "
-              f"{result['attacks']['both']['flip_rate']:.3f}")
+        print(
+            f"credit {name}: AUC {result['clean']['roc_auc']:.3f}, flip rate (both) "
+            f"{result['attacks']['both']['flip_rate']:.3f}"
+        )
     out = artifacts / "credit"
     out.mkdir(parents=True, exist_ok=True)
     (out / "results.json").write_text(json.dumps(summary, indent=2))
