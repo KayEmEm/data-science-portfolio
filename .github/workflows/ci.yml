@@ -25,6 +25,7 @@ jobs:
       p10: ${{ steps.filter.outputs.p10 }}
       p11: ${{ steps.filter.outputs.p11 }}
       p12: ${{ steps.filter.outputs.p12 }}
+      p13: ${{ steps.filter.outputs.p13 }}
     steps:
       - uses: actions/checkout@v4
       - id: filter
@@ -81,6 +82,13 @@ jobs:
             p12:
               - 'common/**'
               - 'projects/p12_inventory_control/**'
+              - '.github/workflows/**'
+            p13:
+              - 'common/**'
+              - 'projects/p01_loan_default/**'
+              - 'projects/p06_road_damage/**'
+              - 'projects/p08_network_anomaly/**'
+              - 'projects/p13_adversarial_robustness/**'
               - '.github/workflows/**'
 
   common:
@@ -352,4 +360,27 @@ jobs:
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on a synthetic archive (tiny training runs, no data download)
+        run: make smoke
+
+  p13_adversarial_robustness:
+    needs: changes
+    if: needs.changes.outputs.p13 == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/p13_adversarial_robustness
+    env:
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # The CPU build of PyTorch first, so that the project install does not pull the CUDA build (several GB).
+      - run: python -m pip install torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cpu
+      # The target projects 1, 6 and 8 are installed from their folders; their models are rebuilt from their code.
+      - run: python -m pip install -e ../../common -e ../p01_loan_default -e ../p06_road_damage -e ../p08_network_anomaly -e ".[dev]"
+      - run: make lint
+      - run: make test
+      - name: Smoke run of the full pipeline on synthetic sources and an untrained detector (no data download)
         run: make smoke

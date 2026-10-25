@@ -16,6 +16,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 | 10 | [Delivery routes and driver shifts](projects/p10_delivery_planning) | Mathematical optimization | complete | Solomon VRPTW: OR-Tools 0.9% above the best known distance in 300 s per instance (first solution heuristics 53 to 102%); driver shift MIP optimal in about 1 s for 4 days; cost aware routing lowers the week's cost by 5.6% |
 | 11 | [Illicit transactions in a payment network](projects/p11_illicit_transactions) | Graph analytics | complete | Elliptic test illicit F1 0.799 with LightGBM on transaction features (GraphSAGE 0.697, GCN 0.458, baseline 0.428); every model drops to F1 0.03 or less after the dark market shutdown; illicit transactions cluster in Louvain communities |
 | 12 | [Inventory control](projects/p12_inventory_control) | Reinforcement learning | complete | M5 store CA_1, three products (sample run): tuned (s, S) costs least for all three; PPO costs 12 to 19% more and SAC 12 to 50% more; (s, S) is 3.6% above the exact optimum on the slow product with a fixed lead time |
+| 13 | [Adversarial robustness](projects/p13_adversarial_robustness) | Adversarial ML (cross cutting) | complete | sample run: a borrowed payment of up to 10% of the limit plus free self reported fields turns 24% of credit rejections into approvals (6% with two defenses); a changed packet TTL, padding and delays evade 92% of LightGBM flow detections (3% after adversarial training); PGD at 2/255 brings detector mAP50 from 0.50 to 0.00 |
 
 ## Shared conventions
 
@@ -44,9 +45,10 @@ projects/
   p10_delivery_planning/
   p11_illicit_transactions/
   p12_inventory_control/
+  p13_adversarial_robustness/  AGPL-3.0, because it uses Ultralytics YOLO
 .github/workflows/      one CI workflow
 ```
 
 ## License
 
-Code: MIT (see `LICENSE`), except `projects/p06_road_damage`, which is AGPL-3.0 (see its `LICENSE`). Each dataset keeps its own license, stated in its project README.
+Code: MIT (see `LICENSE`), except `projects/p06_road_damage` and `projects/p13_adversarial_robustness`, which are AGPL-3.0 (see their `LICENSE` files). Each dataset keeps its own license, stated in its project README.

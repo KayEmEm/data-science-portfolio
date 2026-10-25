@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adv-robustness"
+version = "0.1.0"
+description = "Adversarial robustness of the portfolio's own models: evasion and poisoning attacks on projects 1, 6 and 8, and what each defense costs in clean performance"
+requires-python = ">=3.11"
+license = "AGPL-3.0-only"
+# The target projects (loan-default, road-damage, flow-anomaly) are installed from their
+# folders by `make install`; their pinned dependencies come with them.
+dependencies = [
+    "numpy==2.5.4",
+    "pandas==3.1.0",
+    "pyarrow==25.0.1",
+    "scipy==1.18.1",
+    "scikit-learn==1.9.1",
+    "lightgbm==4.7.0",
+    "torch==2.14.1",
+    "torchvision==0.29.1",
+    "ultralytics==8.4.184",
+    "adversarial-robustness-toolbox==1.20.1",
+    "pillow==12.3.0",
+    "matplotlib==3.11.2",
+    "tabulate==0.10.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.1.1", "ruff==0.17.2"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
