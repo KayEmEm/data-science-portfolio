@@ -51,7 +51,7 @@ def seed_spread(summary: pd.DataFrame) -> pd.DataFrame:
             test_sd=("test_cost", "std"),
             test_min=("test_cost", "min"),
             test_max=("test_cost", "max"),
-            diff_share_mean=("test_diff_share", "mean"),
+            pct_against_s_S=("test_diff_share", lambda d: 100 * d.mean()),
             beats_s_S=("test_diff_high", lambda d: int((d < 0).sum())),
         )
         .reset_index()
@@ -114,7 +114,11 @@ def band(ax, frame: pd.DataFrame, color: str, label: str) -> None:
     pivot = frame.pivot_table(index="step", columns="policy", values="cost").sort_index().ffill()
     steps = pivot.index.to_numpy()
     ax.plot(
-        steps, pivot.median(axis=1), color=color, lw=2, label=f"{label} (median of {pivot.shape[1]} seeds)"
+        steps,
+        pivot.median(axis=1),
+        color=color,
+        lw=2,
+        label=f"{label} (median of {pivot.shape[1]} seeds)" if pivot.shape[1] > 1 else f"{label}, one seed",
     )
     ax.fill_between(steps, pivot.min(axis=1), pivot.max(axis=1), color=color, alpha=0.18, lw=0)
 
@@ -138,7 +142,8 @@ def figure_learning(products, artifacts, summary, curve, episodes, path: Path) -
                 0, max(2.2 * refs["base_stock"], 1.0) if costs.max() > 2.2 * refs["base_stock"] else None
             )
             ax.set_title(f"{name}: {LABELS[algorithm]}", fontsize=10)
-            ax.set_xlabel("training steps (days simulated)")
+            ax.set_xlabel("training steps (days simulated), thousands")
+            ax.xaxis.set_major_formatter(lambda x, _: f"{x / 1000:.0f}")
             ax.set_ylabel("validation cost per year ($)")
             ax.legend(fontsize=7, loc="upper right")
     fig.suptitle("Learning curves: mean yearly cost on the validation scenarios (band: best to worst seed)")
@@ -156,8 +161,8 @@ def figure_costs(rows: pd.DataFrame, path: Path, prefix: str = "test", title: st
         cost = mine[f"{prefix}_cost"].to_numpy()
         err = np.vstack([cost - mine[f"{prefix}_cost_low"], mine[f"{prefix}_cost_high"] - cost])
         ax.bar(x, cost, color=[COLORS[k] for k in mine["kind"]], yerr=err, capsize=3, width=0.65)
-        for xi, value in zip(x, cost, strict=True):
-            ax.text(xi, value, f"{value:.0f}", ha="center", va="bottom", fontsize=8)
+        for xi, value, top in zip(x, cost, mine[f"{prefix}_cost_high"], strict=True):
+            ax.text(xi, top, f"{value:.0f}", ha="center", va="bottom", fontsize=8)
         ax.set_xticks(x, [LABELS[k] for k in mine["kind"]], fontsize=8)
         ax.set_title(product, fontsize=10)
         ax.set_ylabel("cost per year ($)")
@@ -228,7 +233,7 @@ def figure_policy_map(artifacts: Path, products: list[dict], selection: dict, pa
         ax.set_xlabel("inventory position, all on hand (units)")
         ax.set_ylabel("order placed (units)")
         ax.legend(fontsize=8)
-    fig.suptitle("Order rule of each policy on a Tuesday with nothing on order")
+    fig.suptitle("Order rule of each policy on a Monday with nothing on order")
     fig.tight_layout()
     fig.savefig(path)
     plt.close(fig)
@@ -257,7 +262,9 @@ def dp_lines(artifacts: Path) -> tuple[list[str], dict | None]:
                 ("optimal", "Optimal (dynamic programming)"),
                 ("s_S", "(s, S)"),
                 ("base_stock", "Base stock (R, S)"),
+                ("ppo", "PPO, seed with the lowest validation cost"),
             )
+            if key in dp
         ]
     )
     lines = [

@@ -78,7 +78,7 @@ def load_model(path: Path, algorithm: str):
     return (PPO if algorithm == "ppo" else SAC).load(path, device="cpu")
 
 
-def policy_map(problem: Problem, policies: dict, wday: int = 3) -> pd.DataFrame:
+def policy_map(problem: Problem, policies: dict, wday: int = 3) -> pd.DataFrame:  # 3: Monday
     """Order placed by each policy at every position, with all stock on hand and nothing on order."""
     from inventory_rl.dynamics import Batch, Scenarios
 
