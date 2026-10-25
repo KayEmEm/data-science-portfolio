@@ -238,7 +238,41 @@ def markdown_table(frame: pd.DataFrame) -> str:
     return frame.to_markdown(index=False, floatfmt=".1f")
 
 
-def write_results(rows, spread, summary, products, selection, reports: Path) -> dict:
+def dp_lines(artifacts: Path) -> tuple[list[str], dict | None]:
+    path = artifacts / "dp" / "result.json"
+    if not path.exists():
+        return [], None
+    dp = json.loads(path.read_text())
+    table = pd.DataFrame(
+        [
+            {
+                "Policy": name,
+                "Simulated cost per year ($)": f"{dp[key]['mean']:.2f} +- {dp[key]['half_width']:.2f}",
+                "Above the optimum": "" if key == "optimal" else f"{100 * dp[key]['gap_share']:+.1f}%",
+                "Parameters": "" if key == "optimal" else str(dp[key]["params"]),
+            }
+            for key, name in (
+                ("optimal", "Optimal (dynamic programming)"),
+                ("s_S", "(s, S)"),
+                ("base_stock", "Base stock (R, S)"),
+            )
+        ]
+    )
+    lines = [
+        "## Validation against the exact optimum "
+        f"({dp['product']} product, lead time fixed at {dp['lead_time']} days)",
+        "",
+        "Expected cost of the optimal policy by backward induction: "
+        f"{dp['expected_optimal']:.2f} $ per year. "
+        f"Simulated over {dp['episodes']} years:",
+        "",
+        table.to_markdown(index=False),
+        "",
+    ]
+    return lines, dp
+
+
+def write_results(rows, spread, summary, products, selection, reports: Path, artifacts: Path) -> dict:
     main = rows.assign(
         policy=[LABELS[k] for k in rows["kind"]],
         test=[
@@ -323,6 +357,8 @@ def write_results(rows, spread, summary, products, selection, reports: Path) -> 
         *[f"* `{k}`: {v}" for k, v in SHAPING.items()],
         "",
     ]
+    validation, dp = dp_lines(artifacts)
+    text += validation
     (reports / "results.md").write_text("\n".join(text))
     results = {
         "data": selection["data"],
@@ -349,6 +385,7 @@ def write_results(rows, spread, summary, products, selection, reports: Path) -> 
             r.shaping: {"seeds": int(r.seeds), "test_cost": round(r.test_cost, 2)}
             for r in shaping.dropna(subset=["seeds"]).itertuples()
         },
+        "dp_validation": dp,
     }
     (reports / "results.json").write_text(json.dumps(results, indent=2))
     return results
@@ -393,7 +430,7 @@ def main() -> None:
     figure_seeds(summary, figures / "seeds.png")
     figure_shaping(summary, figures / "shaping.png")
     figure_policy_map(args.artifacts, products, selection, figures / "policy_map.png")
-    write_results(rows, spread, summary, products, selection, args.reports)
+    write_results(rows, spread, summary, products, selection, args.reports, args.artifacts)
     print(f"wrote {args.reports / 'results.md'} and {len(list(figures.glob('*.png')))} figures")
 
 

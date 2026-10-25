@@ -8,7 +8,7 @@ JOBS ?= 4
 SMOKE_DIR := artifacts/smoke
 RUN := --sample $(SAMPLE)
 
-.PHONY: install data baselines train evaluate report all smoke test lint clean
+.PHONY: install data baselines validate train evaluate report all smoke test lint clean
 
 install:             ## this project and the shared common package
 	$(PYTHON) -m pip install -e ../../common -e ".[dev]"
@@ -18,6 +18,9 @@ data:                ## download the M5 zip (50 MB) or read SOURCE=<zip>, select
 
 baselines:           ## tune base stock (R, S) and (s, S) by simulation
 	$(PYTHON) -m inventory_rl.baselines $(RUN)
+
+validate:            ## exact optimum by dynamic programming (slow product, fixed lead time) against the simulator
+	$(PYTHON) -m inventory_rl.dp $(RUN)
 
 train:               ## PPO and SAC per product and seed, and the reward shaping study; resumes
 	$(PYTHON) -m inventory_rl.train $(RUN) --jobs $(JOBS)
@@ -29,12 +32,13 @@ report:              ## tables, figures, the animation and results.json under re
 	$(PYTHON) -m inventory_rl.report
 	$(PYTHON) -m inventory_rl.animate
 
-all: data baselines train evaluate report
+all: data baselines validate train evaluate report
 
 smoke:               ## the whole pipeline on a synthetic archive with tiny runs; outputs stay under artifacts/smoke
 	$(PYTHON) -m inventory_rl.synthetic $(SMOKE_DIR)/m5_synthetic.zip
 	$(PYTHON) -m inventory_rl.data --source $(SMOKE_DIR)/m5_synthetic.zip --data-dir $(SMOKE_DIR)/data
 	$(PYTHON) -m inventory_rl.baselines --data-dir $(SMOKE_DIR)/data --artifacts $(SMOKE_DIR) --quick
+	$(PYTHON) -m inventory_rl.dp --data-dir $(SMOKE_DIR)/data --artifacts $(SMOKE_DIR) --quick
 	$(PYTHON) -m inventory_rl.train --data-dir $(SMOKE_DIR)/data --artifacts $(SMOKE_DIR) --quick --jobs 2
 	$(PYTHON) -m inventory_rl.evaluate --data-dir $(SMOKE_DIR)/data --artifacts $(SMOKE_DIR) --quick \
 		--data-label synthetic

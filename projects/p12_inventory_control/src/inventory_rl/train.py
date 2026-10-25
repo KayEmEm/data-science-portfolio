@@ -212,6 +212,7 @@ def main() -> None:
         tuned = load_baselines(args.artifacts, spec["product"])["s_S"]
         base_level = (tuned["s"] + tuned["S"]) / 2  # reference position of the potential shaping
         todo.append((spec, products[spec["product"]], base_level, run, out))
+    todo.sort(key=lambda job: job[0]["algorithm"] != "sac")  # the longest runs first
     print(f"{len(todo)} of {len(plan)} runs to train, {args.jobs} at a time")
     with ProcessPoolExecutor(max_workers=max(1, args.jobs)) as pool:
         futures = {pool.submit(train_one, *job): job[0]["name"] for job in todo}

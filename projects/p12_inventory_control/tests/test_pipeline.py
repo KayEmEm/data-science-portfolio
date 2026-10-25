@@ -16,6 +16,7 @@ def test_end_to_end_on_a_synthetic_archive(archive, tmp_path):
     run("inventory_rl.data", "--source", str(archive), "--data-dir", str(data), cwd=tmp_path)
     common = ["--data-dir", str(data), "--artifacts", str(artifacts)]
     run("inventory_rl.baselines", *common, "--quick", cwd=tmp_path)
+    run("inventory_rl.dp", *common, "--quick", cwd=tmp_path)
     run("inventory_rl.train", *common, "--quick", "--jobs", "2", cwd=tmp_path)
     stored = {p: p.stat().st_mtime_ns for p in (artifacts / "runs").rglob("info.json")}
     assert len(stored) == 8  # 3 products x 2 algorithms x 1 seed, and 2 shaping runs
@@ -34,4 +35,5 @@ def test_end_to_end_on_a_synthetic_archive(archive, tmp_path):
     assert set(selection["products"]) == {"fast", "medium", "slow"}
     assert len(list((reports / "figures").glob("*.png"))) == 7
     assert (reports / "figures" / "simulated_year.gif").stat().st_size > 10_000
-    assert "## Reward shaping" in (reports / "results.md").read_text()
+    text = (reports / "results.md").read_text()
+    assert "## Reward shaping" in text and "## Validation against the exact optimum" in text
