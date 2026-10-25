@@ -15,6 +15,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common import sample
 
 from retail_forecast.config import (
     CALENDAR_PATH,
@@ -171,6 +172,25 @@ def normalize(
     }
 
 
+def sample_series(processed: dict[str, pd.DataFrame], share: float, seed: int) -> dict[str, pd.DataFrame]:
+    """Keep whole item and store series, stratified by store and department, with all their days.
+
+    The upper levels of the hierarchy are aggregated later from the kept series. The official
+    weights are kept as they are; the evaluation computes its own weights from the series.
+    """
+    series = processed["series"]
+    keep = sample.select(
+        series["item_id"] + "_" + series["store_id"],
+        share,
+        seed,
+        strata=series["store_id"] + "_" + series["dept_id"],
+    )
+    out = dict(processed)
+    for name in ("series", "sales", "prices"):
+        out[name] = processed[name][keep].reset_index(drop=True)
+    return out
+
+
 def daily_prices(prices: pd.DataFrame, series: pd.DataFrame, calendar: pd.DataFrame) -> np.ndarray:
     """Weekly shelf prices as a series by day matrix; NaN before an item is first priced."""
     weeks = np.sort(calendar["wm_yr_wk"].unique())
@@ -216,10 +236,14 @@ def main() -> None:
     parser.add_argument(
         "--expected-series", type=int, default=EXPECTED_SERIES, help="0 skips the size checks"
     )
+    sample.add_arguments(parser, "item and store series, stratified by store and department")
     args = parser.parse_args()
     archive = args.source if args.source else download()
     processed = normalize(read_archive(archive), expected_series=args.expected_series or None)
+    n_full = len(processed["series"])
+    processed = sample_series(processed, args.sample, args.sample_seed)
     write(processed, args.data_dir)
+    sample.record(args.data_dir, args.sample, args.sample_seed, "series", n_full, len(processed["series"]))
 
     from retail_forecast.demand import write_demand_tables
 

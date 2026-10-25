@@ -1,8 +1,11 @@
 # Project 5: retail demand forecasting on M5. Run from this folder.
 PYTHON ?= python
 SMOKE_DIR := artifacts/smoke
+# Share of item and store series kept by `make sample`; outputs stay under artifacts/sample.
+SAMPLE ?= 0.1
+SAMPLE_DIR := artifacts/sample
 
-.PHONY: install data train evaluate report all smoke test lint clean
+.PHONY: install data train evaluate report all sample smoke test lint clean
 
 install:             ## this project, the shared common package and Darts with PyTorch (about 1 GB)
 	$(PYTHON) -m pip install -e ../../common -e ".[dev,neural]"
@@ -20,6 +23,14 @@ report:              ## tables, figures and results.json under reports/
 	$(PYTHON) -m retail_forecast.report
 
 all: data train evaluate report
+
+sample:              ## the whole pipeline on a seeded share SAMPLE of the series (zip from make data in data/raw)
+	$(PYTHON) -m retail_forecast.data --source data/raw/m5.zip --data-dir $(SAMPLE_DIR)/data --sample $(SAMPLE)
+	$(PYTHON) -m retail_forecast.backtest --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR)
+	$(PYTHON) -m retail_forecast.evaluate --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR) \
+		--data-label "m5 sample $(SAMPLE)"
+	$(PYTHON) -m retail_forecast.report --data-dir $(SAMPLE_DIR)/data --artifacts $(SAMPLE_DIR) \
+		--reports $(SAMPLE_DIR)/reports
 
 smoke:               ## the whole pipeline on a synthetic archive; outputs stay under artifacts/smoke
 	$(PYTHON) -m retail_forecast.synthetic $(SMOKE_DIR)/m5_synthetic.zip

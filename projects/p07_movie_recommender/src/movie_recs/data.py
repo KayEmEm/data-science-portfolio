@@ -17,6 +17,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common import sample
 
 from movie_recs.config import (
     ARCHIVE_ROOT,
@@ -135,9 +136,19 @@ def time_split(ts: np.ndarray) -> dict:
     return {"validation_start": validation_start, "test_start": test_start, "end": end}
 
 
-def normalize(tables: dict[str, pd.DataFrame], expect_counts: bool = True) -> dict:
+def normalize(
+    tables: dict[str, pd.DataFrame],
+    expect_counts: bool = True,
+    share: float = sample.FULL,
+    seed: int = sample.DEFAULT_SEED,
+) -> dict:
+    """Check the release, keep a share of whole users (all their ratings) and split by time.
+
+    The release counts are checked before the sample; the time split is computed on the sample.
+    """
     check(tables, expect_counts)
     ratings = tables["ratings"].rename(columns={"userId": "user", "movieId": "item", "timestamp": "ts"})
+    ratings = ratings[sample.select(ratings["user"], share, seed)]
     ratings = ratings.sort_values(["ts", "user", "item"], kind="stable").reset_index(drop=True)
     tags = tables["tags"].rename(columns={"movieId": "item", "timestamp": "ts"})
     tags = tags.assign(tag=tags["tag"].astype(str).str.strip().str.lower())
@@ -173,14 +184,18 @@ def main() -> None:
     parser.add_argument("--md5", default=SOURCE_MD5, help="expected MD5 of the zip; 'any' skips the check")
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--no-count-check", action="store_true", help="skip the release size checks")
+    sample.add_arguments(parser, "users, each with all their ratings")
     args = parser.parse_args()
     archive = args.source if args.source else download()
     md5 = digest(archive, "md5")
     if args.md5 != "any" and md5 != args.md5.strip().lower():
         raise SchemaError(f"{archive} has MD5 {md5}, expected {args.md5}")
-    processed = normalize(read_archive(archive), expect_counts=not args.no_count_check)
+    tables = read_archive(archive)
+    n_users = tables["ratings"]["userId"].nunique()
+    processed = normalize(tables, not args.no_count_check, args.sample, args.sample_seed)
     write(processed, args.data_dir)
     ratings, split = processed["ratings"], processed["split"]
+    sample.record(args.data_dir, args.sample, args.sample_seed, "user", n_users, ratings["user"].nunique())
     print(
         f"{len(ratings):,} ratings of {ratings['user'].nunique():,} users on {ratings['item'].nunique():,} "
         f"movies written to {args.data_dir}; zip MD5 {md5}"
