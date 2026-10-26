@@ -55,10 +55,11 @@ def normalize_name(name: str) -> str:
 
 
 def detect_layout(source: Path) -> str:
-    if all((source / name).exists() for name in FULL_FILES):
-        return "full"
+    """The official partition when its files are present (the committed results use it), else full records."""
     if all((source / name).exists() for name in PARTITION_FILES.values()):
         return "partition"
+    if all((source / name).exists() for name in FULL_FILES):
+        return "full"
     raise FileNotFoundError(
         f"{source} holds neither {FULL_FILES} nor {list(PARTITION_FILES.values())}; "
         "download them from the UNSW-NB15 page (see the README)"
@@ -248,9 +249,17 @@ def main() -> None:
     )
     parser.add_argument("--layout", choices=["full", "partition"], default=None)
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
+    parser.add_argument(
+        "--no-count-check", action="store_true", help="go on when the counts differ from the documented ones"
+    )
     sample.add_arguments(parser, "flows, stratified by attack type and split")
     args = parse_args(parser, __file__)
     flows, report = prepare(args.source, args.layout)
+    if not report["counts_match_documented"] and not args.no_count_check:
+        raise SchemaError(
+            f"{report['layout']} counts {report['counts_found']} differ from the documented "
+            f"{report['counts_documented']}; check the files, or pass --no-count-check to go on"
+        )
     # The audit describes the whole source; the sample is drawn after it.
     n_full = len(flows)
     strata = flows["attack_cat"].astype(str) + "_" + flows["split"].astype(str)

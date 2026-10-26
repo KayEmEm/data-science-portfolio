@@ -35,7 +35,7 @@ sample:              ## the whole pipeline on a seeded share SAMPLE of the flows
 
 smoke:               ## the whole pipeline on synthetic flows; outputs stay under artifacts/smoke
 	$(PYTHON) -m flow_anomaly.synthetic $(SMOKE_DIR)/raw --rows 12000
-	$(PYTHON) -m flow_anomaly.data --source $(SMOKE_DIR)/raw --data-dir $(SMOKE_DIR)/data
+	$(PYTHON) -m flow_anomaly.data --source $(SMOKE_DIR)/raw --data-dir $(SMOKE_DIR)/data --no-count-check
 	$(PYTHON) -m flow_anomaly.train --data-dir $(SMOKE_DIR)/data --artifacts $(SMOKE_DIR) --quick
 	$(PYTHON) -m flow_anomaly.evaluate --data-dir $(SMOKE_DIR)/data --artifacts $(SMOKE_DIR) \
 		--data-label synthetic --bootstrap 20
