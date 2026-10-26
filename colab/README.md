@@ -6,7 +6,7 @@ Each run clones the repository onto the local disk of the Colab machine, install
 
 ## Pinned version
 
-The notebook runs the code at the tag `colab-v1`, not the latest `main`, so a change reaches Colab only after it is reviewed and the pin moves. To move the pin: create a new tag (`colab-v2`) on the reviewed commit of `main`, and change the default of `REF` in the notebook in the same step. `REF` accepts any branch, tag or commit for a single run.
+The notebook runs the code at the tag `colab-v2`, not the latest `main`, so a change reaches Colab only after it is reviewed and the pin moves. To move the pin: create a new tag (`colab-v3`) on the reviewed commit of `main`, and change the default of `REF` in the notebook in the same step. `REF` accepts any branch, tag or commit for a single run.
 
 ## Drive layout
 
@@ -16,7 +16,14 @@ MyDrive/portfolio/
   out/<project folder>/   artifacts/ and reports/ of the runs, copied every 10 minutes and at the end
 ```
 
-Every file is downloaded by hand and uploaded once. At the start of a run the files are copied to `data/raw/` of the project, and the data step reads them there instead of downloading them; p04, p10 and p12, and the full run of p05, check the SHA256 checksum of each file. A file that is missing is downloaded from its source, where the project has one.
+Every file is downloaded by hand and uploaded once. At the start of a run the files are copied to `data/raw/` of the project and checked against [`raw_files.yaml`](raw_files.yaml), which lists the files that the data step of each project reads:
+
+1. A file at its expected name and place is used as it is.
+2. A file with another name (for example `default+of+credit+card+clients.zip`) or in another folder is moved to the expected place.
+3. A file inside a zip (for example the Kaggle `archive.zip` of p11, or the FinanceBench and PyVRP zips as downloaded) is extracted, wherever it sits in the zip. Zips that a project reads directly, such as `m5.zip`, stay as they are.
+4. When a file is still missing, the run stops before the install. The notebook shows the missing files with their sources, and the same list is written to `out/<project folder>/missing_files.txt` on Drive; it is removed by the next complete run.
+
+The data steps then read the files in `data/raw/` and download nothing. p04, p10 and p12, and the full run of p05, check the SHA256 checksum of each file. The targets `smoke`, `test`, `lint`, `install` and `clean` skip the check.
 
 | Project | Files in `raw/<project folder>/` |
 | --- | --- |
@@ -25,14 +32,14 @@ Every file is downloaded by hand and uploaded once. At the start of a run the fi
 | p03_taxi_demand | `trips/yellow_tripdata_2024-01.parquet` to `-12.parquet` ([TLC trip data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)), [`taxi_zone_lookup.csv`](https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv), and `weather_central_park.csv`: the result of [this NOAA query](https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00094728&startDate=2024-01-01&endDate=2024-12-31&dataTypes=PRCP,SNOW,TMAX,TMIN&units=metric&format=csv) |
 | p04_email_uplift | `hillstrom.csv.gz`: [this file](https://hillstorm1.s3.us-east-2.amazonaws.com/hillstorm_no_indices.csv.gz), renamed |
 | p05_retail_forecasting | [`m5.zip`](https://raw.githubusercontent.com/Nixtla/m5-forecasts/main/datasets/m5.zip) |
-| p06_road_damage | `RDD2022_Czech.zip`, `RDD2022_India.zip`; GPU runtime |
+| p06_road_damage | `RDD2022_Czech.zip`, `RDD2022_India.zip` (any zip names that contain `Czech` and `India`); GPU runtime |
 | p07_movie_recommender | `ml-32m.zip` (GroupLens) |
-| p08_network_anomaly | `UNSW_NB15_training-set.csv`, `UNSW_NB15_testing-set.csv` |
-| p09_customer_segments | `online_retail_II.xlsx` (UCI) |
-| p10_delivery_planning | the 112 `.vrp` and `.sol` files of the folder `VRPTW/Solomon` in the [PyVRP Instances zip at the pinned commit](https://github.com/PyVRP/Instances/archive/7474b068a8effa7f39448b241314b615c9271525.zip), without subfolders |
-| p11_illicit_transactions | `elliptic_txs_features.csv`, `elliptic_txs_classes.csv`, `elliptic_txs_edgelist.csv` |
+| p08_network_anomaly | the full records `UNSW-NB15_1.csv` to `UNSW-NB15_4.csv` with `NUSW-NB15_features.csv`, or the partition `UNSW_NB15_training-set.csv` and `UNSW_NB15_testing-set.csv`; with both, the full records are used |
+| p09_customer_segments | `online_retail_II.xlsx`, or the UCI zip that holds it |
+| p10_delivery_planning | the [PyVRP Instances zip at the pinned commit](https://github.com/PyVRP/Instances/archive/7474b068a8effa7f39448b241314b615c9271525.zip) as downloaded, or the 112 `.vrp` and `.sol` files of its folder `VRPTW/Solomon` |
+| p11_illicit_transactions | `elliptic_txs_features.csv`, `elliptic_txs_classes.csv`, `elliptic_txs_edgelist.csv`, or the Kaggle zip that holds them |
 | p12_inventory_control | [`m5.zip`](https://raw.githubusercontent.com/Nixtla/m5-forecasts/main/datasets/m5.zip) (the same file as p05) |
-| p13_adversarial_robustness | `credit/` (the p01 zip), `flows/` (the two p08 files), `images/RDD2022_Czech.zip`, `detector/best.pt` (p06 weights); runs on CPU |
+| p13_adversarial_robustness | the p01 zip, the two p08 partition files, the Czech zip of p06, and `best.pt` from the p06 run; the run moves them to `credit/`, `flows/`, `images/` and `detector/`; runs on CPU |
 
 ## Profiles
 

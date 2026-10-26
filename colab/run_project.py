@@ -9,7 +9,11 @@ Steps, all on the local disk of the Colab machine except the copies to and from 
 
 1. Install the project and the local packages its Makefile installs, with the pinned
    dependencies, except the packages that Colab provides in its own build (torch, torchvision).
-2. Copy the raw files from ``<drive>/raw/<project folder>/`` to ``data/raw/`` of the project.
+2. Copy the raw files from ``<drive>/raw/<project folder>/`` to ``data/raw/`` of the project,
+   and check them against ``colab/raw_files.yaml``: files with other names or inside a zip are
+   moved or extracted to the expected place. When a file is still missing, the run stops before
+   the install, and the list of missing files is shown and written to
+   ``<drive>/out/<project folder>/missing_files.txt``.
 3. With ``--resume``, copy the saved outputs from ``<drive>/out/<project folder>/`` back.
 4. Run the Makefile target of the profile, with the project ``colab.yaml`` (if any) in
    ``PORTFOLIO_CONFIG``, while a background thread copies outputs to Drive every few minutes.
@@ -19,6 +23,7 @@ The script uses the standard library and PyYAML only, so that it runs before the
 """
 
 import argparse
+import fnmatch
 import os
 import re
 import shutil
@@ -26,6 +31,7 @@ import subprocess
 import sys
 import threading
 import tomllib
+import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -34,6 +40,10 @@ PROVIDED = {"torch", "torchvision"}  # Colab's own CUDA builds stay in place
 OUTPUTS = ("artifacts", "reports")
 PROFILE_KEYS = {"target", "sample", "mirror_minutes", "mirror_exclude", "projects"}
 PROJECT_KEYS = {"target", "sample"}
+RAW_FILES = REPO / "colab" / "raw_files.yaml"
+ENTRY_KEYS = {"file", "min", "also", "inside", "extract", "source"}
+MISSING_NAME = "missing_files.txt"
+NO_DATA_TARGETS = {"install", "lint", "test", "smoke", "clean"}  # targets that read no raw files
 
 
 def project_dir(name: str) -> Path:
@@ -122,6 +132,130 @@ def copy_tree(source: Path, target: Path, exclude: tuple[str, ...] = ()) -> int:
     return count
 
 
+def read_raw_files(project: Path) -> list:
+    """The entries of ``raw_files.yaml`` for a project (by its number, p06)."""
+    import yaml
+
+    with RAW_FILES.open(encoding="utf-8") as handle:
+        data = yaml.safe_load(handle) or {}
+    return data.get(project.name[:3]) or []
+
+
+def _matches(raw: Path, pattern: str) -> list[Path]:
+    return sorted(p for p in raw.glob(pattern) if p.is_file())
+
+
+def _place(raw: Path, entry: dict) -> None:
+    """Move files with other names or places, then extract zip members, to the expected place."""
+    pattern = entry["file"]
+    target_dir = (raw / pattern).parent
+    name = Path(pattern).name
+    wildcard = any(c in name for c in "*?[")
+    expected = set(_matches(raw, pattern))
+    names = list(entry.get("also", [])) + ([] if wildcard else [name])
+    for path in sorted(raw.rglob("*")):
+        if not path.is_file() or path in expected or path.suffix == ".part":
+            continue
+        if any(fnmatch.fnmatch(path.name, n) for n in names):
+            out = target_dir / (path.name if wildcard else name)
+            if out.exists():
+                continue
+            out.parent.mkdir(parents=True, exist_ok=True)
+            path.rename(out)
+            print(f"[raw] moved {path.relative_to(raw)} to {out.relative_to(raw)}", flush=True)
+            if not wildcard:
+                return
+    if len(_matches(raw, pattern)) >= entry.get("min", 1) or not entry.get("extract", True):
+        return
+    inside = entry.get("inside", "*")
+    for archive in sorted(raw.rglob("*.zip")):
+        try:
+            handle = zipfile.ZipFile(archive)
+        except zipfile.BadZipFile:
+            continue
+        with handle:
+            for member in handle.infolist():
+                base = Path(member.filename).name
+                if member.is_dir() or not fnmatch.fnmatch(base, name):
+                    continue
+                if not fnmatch.fnmatch(member.filename, inside):
+                    continue
+                out = target_dir / (base if wildcard else name)
+                if out.exists():
+                    continue
+                out.parent.mkdir(parents=True, exist_ok=True)
+                with handle.open(member) as source, out.open("wb") as sink:
+                    shutil.copyfileobj(source, sink)
+                print(f"[raw] extracted {member.filename} from {archive.name}", flush=True)
+                if not wildcard:
+                    return
+
+
+def _complete(raw: Path, entries: list) -> bool:
+    return all(
+        _complete_one_of(raw, e["one_of"])
+        if "one_of" in e
+        else len(_matches(raw, e["file"])) >= e.get("min", 1)
+        for e in entries
+    )
+
+
+def _complete_one_of(raw: Path, options: list) -> bool:
+    return any(_complete(raw, option) for option in options)
+
+
+def _describe(entry: dict, raw: Path) -> str:
+    found = len(_matches(raw, entry["file"]))
+    count = f" (at least {entry['min']}, found {found})" if entry.get("min", 1) > 1 else ""
+    return f"{entry['file']}{count}\n      from: {entry.get('source', 'see colab/README.md')}"
+
+
+def check_raw(raw: Path, entries: list) -> list[str]:
+    """Place the raw files of a project; return the lines that describe the missing ones."""
+    missing = []
+    for entry in entries:
+        if "one_of" in entry:
+            for option in entry["one_of"]:
+                for item in option:
+                    _place(raw, item)
+                if _complete(raw, option):
+                    break
+            else:
+                missing.append("one of these sets:")
+                for i, option in enumerate(entry["one_of"], start=1):
+                    missing += [f"  set {i}: {_describe(item, raw)}" for item in option]
+            continue
+        unknown = sorted(set(entry) - ENTRY_KEYS)
+        if unknown:
+            raise SystemExit(f"{RAW_FILES}: unknown keys {unknown} in {entry}")
+        _place(raw, entry)
+        if len(_matches(raw, entry["file"])) < entry.get("min", 1):
+            missing.append(_describe(entry, raw))
+    return missing
+
+
+def report_missing(project: Path, missing: list[str], drive_raw: Path, drive_out: Path) -> None:
+    """Show the missing files and keep the list on Drive; remove an old list when none is."""
+    note = drive_out / MISSING_NAME
+    if not missing:
+        if note.is_file():
+            note.unlink()
+        return
+    text = "\n".join(
+        [
+            f"{project.name}: raw files missing. Upload them to {drive_raw}/",
+            "(names may differ, and zips that hold them are opened), then run again:",
+            "",
+            *[f"  - {line}" if not line.startswith("  ") else line for line in missing],
+            "",
+        ]
+    )
+    drive_out.mkdir(parents=True, exist_ok=True)
+    note.write_text(text, encoding="utf-8")
+    print(text + f"\nThis list is also in {note}", flush=True)
+    raise SystemExit(2)
+
+
 class Mirror:
     """Copies the outputs of a project to Drive every ``minutes`` and once more at the end."""
 
@@ -174,18 +308,19 @@ def main() -> None:
     args = parser.parse_args()
 
     project = project_dir(args.project)
-    if not args.skip_install:
-        print("Installing", project.name, flush=True)
-        install(project)
     profile = for_project(read_profile(args.profile), project)
     target = args.target or profile.get("target", "sample")
     sample = args.sample if args.sample is not None else profile.get("sample")
     drive_raw = args.drive / "raw" / project.name
     drive_out = args.drive / "out" / project.name
 
-    print(
-        f"Raw files from {drive_raw}:", copy_tree(drive_raw, project / "data" / "raw"), flush=True
-    )
+    raw = project / "data" / "raw"
+    print(f"Raw files from {drive_raw}:", copy_tree(drive_raw, raw), flush=True)
+    if not set(target.split()) <= NO_DATA_TARGETS:
+        report_missing(project, check_raw(raw, read_raw_files(project)), drive_raw, drive_out)
+    if not args.skip_install:
+        print("Installing", project.name, flush=True)
+        install(project)
     if args.resume:
         restored = sum(copy_tree(drive_out / n, project / n) for n in OUTPUTS)
         print(f"Restored {restored} files from {drive_out}", flush=True)
