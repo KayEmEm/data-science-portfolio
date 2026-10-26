@@ -160,6 +160,15 @@ def test_check_raw_reports_missing_files_and_alternatives(tmp_path):
     assert run_project.check_raw(tmp_path, entries) == []
 
 
+def test_drive_folders_use_the_project_number_unless_only_the_full_name_exists(tmp_path):
+    project = run_project.project_dir("p01")
+    assert run_project.drive_name(tmp_path, project) == "p01"
+    (tmp_path / "raw" / "p01_loan_default").mkdir(parents=True)
+    assert run_project.drive_name(tmp_path, project) == "p01_loan_default"
+    (tmp_path / "raw" / "p01").mkdir()
+    assert run_project.drive_name(tmp_path, project) == "p01"
+
+
 def test_report_missing_stops_and_keeps_the_list_on_drive(tmp_path):
     project = run_project.project_dir("p04")
     out = tmp_path / "out"

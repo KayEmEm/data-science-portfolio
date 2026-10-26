@@ -152,4 +152,4 @@ p13:
     source: the p06 file RDD2022_Czech.zip (the czech/ zip of p06)
   - file: detector/best.pt
     folder: detector
-    source: the weights of the p06 run, in out/p06_road_damage/artifacts/ on Drive (runs/<run>/weights/best.pt)
+    source: the weights of the p06 run, in out/p06/artifacts/ on Drive (runs/<run>/weights/best.pt)
