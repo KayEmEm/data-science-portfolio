@@ -1,4 +1,5 @@
 import argparse
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -6,6 +7,8 @@ import pytest
 import yaml
 
 from portfolio_common import config
+
+REPO = Path(__file__).resolve().parents[2]
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -108,3 +111,14 @@ def test_settings_decorator_stops_on_unknown_field(tmp_path, monkeypatch):
         @config.settings(tmp_path)
         class Run:
             steps: int = 100
+
+
+@pytest.mark.parametrize(
+    "path", sorted(REPO.glob("projects/*/config.yaml")), ids=lambda p: p.parent.name
+)
+def test_project_settings_blocks_name_settings_classes(path):
+    # The decorator reads only blocks named after a class it decorates; others are never read.
+    blocks = set(config.read(path).get(config.SETTINGS_KEY) or {})
+    source = "".join(f.read_text(encoding="utf-8") for f in path.parent.glob("src/*/config.py"))
+    classes = set(re.findall(r"@\w*settings\([^)]*\)\s*\nclass (\w+)", source))
+    assert blocks <= classes, f"blocks without a settings class: {sorted(blocks - classes)}"
