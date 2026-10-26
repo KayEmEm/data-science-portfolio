@@ -8,6 +8,7 @@ import duckdb
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 from portfolio_common.plotting import apply_style
 
 from taxi_demand import config
@@ -153,7 +154,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--warehouse", type=Path, default=config.WAREHOUSE_PATH)
     parser.add_argument("--reports", type=Path, default=config.REPORTS_DIR)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
 
     figures = args.reports / "figures"
     figures.mkdir(parents=True, exist_ok=True)

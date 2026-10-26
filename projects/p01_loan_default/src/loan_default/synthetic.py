@@ -9,6 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from loan_default.config import MONTHS, SEED, SOURCE_TARGET
 
@@ -57,7 +58,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("out", type=Path, help="output Parquet file")
     parser.add_argument("--n", type=int, default=3000)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     write_clients(args.out, args.n)
 
 

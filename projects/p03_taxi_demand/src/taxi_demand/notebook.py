@@ -9,6 +9,7 @@ from pathlib import Path
 import nbformat
 from nbclient import NotebookClient
 from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
+from portfolio_common.config import parse_args
 
 from taxi_demand import config
 from taxi_demand.warehouse import ANALYSIS_SQL, analysis_queries
@@ -94,7 +95,7 @@ def main() -> None:
     parser.add_argument("--warehouse", type=Path, default=config.WAREHOUSE_PATH)
     parser.add_argument("--out", type=Path, default=config.PROJECT_DIR / "notebooks" / "analysis.ipynb")
     parser.add_argument("--no-execute", action="store_true")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     notebook = build(args.warehouse.resolve())
     if not args.no_execute:
         NotebookClient(notebook, timeout=600, kernel_name="python3").execute()

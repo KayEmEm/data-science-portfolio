@@ -10,6 +10,7 @@ from pathlib import Path
 import torch
 from flow_anomaly.synthetic import make_flows, write_partition
 from loan_default.synthetic import make_source
+from portfolio_common.config import parse_args
 from road_damage.config import CLASS_IDS
 from road_damage.synthetic import write_archives
 
@@ -45,7 +46,7 @@ def main() -> None:
     parser.add_argument("--clients", type=int, default=1500)
     parser.add_argument("--flows", type=int, default=12_000)
     parser.add_argument("--images", type=int, default=40, help="labelled images per country")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     write(args.out, args.clients, args.flows, args.images)
 
 

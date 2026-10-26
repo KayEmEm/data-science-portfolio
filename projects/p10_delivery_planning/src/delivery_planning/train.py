@@ -18,6 +18,8 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
+from portfolio_common.config import parse_args
+
 from delivery_planning.config import (
     ARTIFACTS_DIR,
     DATA_DIR,
@@ -108,7 +110,7 @@ def main() -> None:
     parser.add_argument("--quick", action="store_true", help="two configurations and short limits, for tests")
     parser.add_argument("--force", action="store_true", help="run searches that are stored")
     parser.add_argument("--workers", type=int, default=WORKERS)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run(args.data_dir, args.artifacts, args.quick, args.force, args.workers)
 
 

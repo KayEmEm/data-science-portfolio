@@ -1,0 +1,24 @@
+data:
+  source: null
+  data_dir: data
+  sha: pinned
+  sample: 1.0
+  sample_seed: 42
+evaluate:
+  data_dir: data
+  artifacts: artifacts
+  quick: false
+  force: false
+report:
+  data_dir: data
+  artifacts: artifacts
+  reports: reports
+  data_label: Solomon benchmark
+synthetic:
+  customers: 25
+train:
+  data_dir: data
+  artifacts: artifacts
+  quick: false
+  force: false
+  workers: 4

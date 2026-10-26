@@ -22,6 +22,7 @@ import joblib
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -183,7 +184,7 @@ def main() -> None:
     parser.add_argument("--only", nargs="*", help="models to fit (default: all)")
     parser.add_argument("--quick", action="store_true", help="small settings for the smoke run")
     parser.add_argument("--force", action="store_true", help="refit stored models")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     nodes, edges = load(args.data_dir)
     metrics = load_metrics(args.artifacts)
     m = masks(nodes)

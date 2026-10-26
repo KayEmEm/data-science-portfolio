@@ -22,6 +22,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from dowhy import CausalModel
+from portfolio_common.config import parse_args
 
 from email_uplift.config import ARM_COL, ARMS, ARTIFACTS_DIR, CONTROL, CUSTOMERS_PATH, SEED
 from email_uplift.data import feature_matrix, load
@@ -193,7 +194,7 @@ def main() -> None:
     parser.add_argument("--data-label", default="hillstrom-2008", help="recorded with every output")
     parser.add_argument("--replicates", type=int, default=20, help="independent selection draws")
     parser.add_argument("--simulations", type=int, default=50, help="replicates per refutation test")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     summary = run(args.customers, args.artifacts, args.data_label, args.replicates, args.simulations)
     print(pd.DataFrame(summary["estimates"]).round(4).to_string(index=False))
     print(pd.DataFrame(summary["refutations_visit"]).round(4).to_string(index=False))

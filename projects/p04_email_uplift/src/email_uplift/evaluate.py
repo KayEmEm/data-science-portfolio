@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from email_uplift.config import ARTIFACTS_DIR, SEED, Economics
 from email_uplift.data import TREATMENT_COL
@@ -152,7 +153,7 @@ def run(artifacts_dir: Path) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     summary = run(args.artifacts)
     print(pd.DataFrame(summary["qini"]).round(4).to_string(index=False))
     print(pd.DataFrame(summary["policies"]).round(4).to_string(index=False))

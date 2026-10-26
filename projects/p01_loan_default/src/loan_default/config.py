@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from portfolio_common.config import settings as yaml_settings
+
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
@@ -39,6 +41,7 @@ REQUIRED_COLUMNS = [
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class CostAssumptions:
     """Illustrative unit economics for the approval threshold.
 
@@ -53,6 +56,7 @@ class CostAssumptions:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class RunSettings:
     """Model selection settings. ``quick`` shrinks everything for smoke tests."""
 

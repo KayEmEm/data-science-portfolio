@@ -8,6 +8,8 @@ model settings, the same split rules.
 from dataclasses import dataclass
 from pathlib import Path
 
+from portfolio_common.config import settings as yaml_settings
+
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
@@ -31,6 +33,7 @@ DETECTOR_WEIGHTS = RAW_DIR / "detector" / "best.pt"
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class CreditBudget:
     """What a credit applicant can change before scoring, as a share of the credit limit.
 
@@ -46,6 +49,7 @@ class CreditBudget:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class FlowBudget:
     """What an attacker can change in its own flows without breaking the attack.
 
@@ -61,6 +65,7 @@ class FlowBudget:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class ImageBudget:
     """Perturbation limits on images scaled to [0, 1], at the detector input size."""
 
@@ -73,6 +78,7 @@ class ImageBudget:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class SmoothingSettings:
     sigmas: tuple[float, ...] = (0.25, 0.5)
     samples: int = 100

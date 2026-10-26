@@ -25,6 +25,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
+from portfolio_common.config import parse_args
 from scipy import stats
 
 from inventory_rl import demand as demand_model
@@ -167,7 +168,7 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--sample", type=float, default=1.0, help="fraction of the scenarios")
     parser.add_argument("--quick", action="store_true", help="small settings for the smoke run")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run_settings = settings(args.sample, args.quick)
     product = {p["product"]: p for p in load_products(args.data_dir)}[DP_PRODUCT]
     demand = load_demand(args.data_dir)

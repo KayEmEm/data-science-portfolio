@@ -33,6 +33,7 @@ import mlflow
 import numpy as np
 import pandas as pd
 import umap
+from portfolio_common.config import parse_args
 
 from customer_segments import clustering
 from customer_segments.config import (
@@ -273,7 +274,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--quick", action="store_true")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run(args.artifacts, args.quick)
 
 

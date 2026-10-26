@@ -6,6 +6,7 @@ from pathlib import Path
 
 import duckdb
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from loan_default.config import CLIENTS_PATH, FEATURES_PATH, ID_COL
 
@@ -27,7 +28,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--clients", type=Path, default=CLIENTS_PATH)
     parser.add_argument("--out", type=Path, default=FEATURES_PATH)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     frame = build_features(args.clients)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     frame.to_parquet(args.out, index=False)

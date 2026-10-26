@@ -6,6 +6,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import pandas as pd
+from portfolio_common.config import parse_args
 from pypdf import PdfReader
 
 from filings_qa.config import CHUNKS_PATH, DOCUMENTS_PATH, PAGES_PATH, PDF_DIR, ChunkSettings
@@ -87,7 +88,7 @@ def main() -> None:
     parser.add_argument("--pages", type=Path, default=PAGES_PATH)
     parser.add_argument("--chunks", type=Path, default=CHUNKS_PATH)
     parser.add_argument("--skip-pdfs", action="store_true", help="chunk an existing pages file")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
 
     if args.skip_pdfs:
         pages = pd.read_parquet(args.pages)

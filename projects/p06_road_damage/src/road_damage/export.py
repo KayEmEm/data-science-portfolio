@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 import onnxruntime
 import torch
+from portfolio_common.config import parse_args
 from ultralytics import YOLO, settings
 
 from road_damage.config import ARTIFACTS_DIR, IMAGE_SIZE, YOLO_DIR
@@ -73,7 +74,7 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--imgsz", type=int, default=IMAGE_SIZE)
     parser.add_argument("--images", type=int, default=200, help="test images timed per runtime")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     settings.update({"mlflow": False})
     print(json.dumps(export(args.yolo_dir, args.artifacts, args.imgsz, args.images), indent=2))
 

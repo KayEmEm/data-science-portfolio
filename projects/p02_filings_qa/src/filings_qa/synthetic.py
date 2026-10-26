@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from filings_qa.config import SEED
 
@@ -82,7 +83,7 @@ def write(out_dir: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("out_dir", type=Path)
-    write(parser.parse_args().out_dir)
+    write(parse_args(parser, __file__).out_dir)
 
 
 if __name__ == "__main__":

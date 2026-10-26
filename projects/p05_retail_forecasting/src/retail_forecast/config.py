@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from portfolio_common.config import settings as yaml_settings
+
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
@@ -73,6 +75,7 @@ STORE_DEPT_LEVEL = 9
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class Backtest:
     """Rolling forecast origins, as the last observed day number (d_<origin>).
 
@@ -87,6 +90,7 @@ class Backtest:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class RunSettings:
     """Model settings. ``quick`` shrinks everything for smoke tests."""
 

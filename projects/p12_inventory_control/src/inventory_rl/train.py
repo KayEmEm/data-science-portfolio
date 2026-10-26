@@ -25,6 +25,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from inventory_rl.config import (
     ALGORITHMS,
@@ -212,7 +213,7 @@ def main() -> None:
     parser.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 1), help="runs in parallel")
     parser.add_argument("--only", nargs="*", help="run names to train (default: all)")
     parser.add_argument("--force", action="store_true", help="train finished runs again")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     from inventory_rl.baselines import load_baselines
 
     run = settings(args.sample, args.quick)

@@ -21,6 +21,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from illicit_graph.config import ARTIFACTS_DIR, DATA_DIR, ILLICIT, LICIT, NEO4J_DIR
 from illicit_graph.data import load
@@ -108,7 +109,7 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--uri", default=os.environ.get("NEO4J_URI", "bolt://localhost:7687"))
     parser.add_argument("--user", default=os.environ.get("NEO4J_USER", "neo4j"))
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     if args.action == "export":
         out = export(args.data_dir, args.artifacts)
         print(f"wrote {out / 'transactions.csv'} and {out / 'payments.csv'}")

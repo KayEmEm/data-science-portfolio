@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
+from portfolio_common.config import parse_args
 from scipy import stats
 from statsmodels.stats.multitest import multipletests
 from statsmodels.stats.power import NormalIndPower
@@ -224,7 +225,7 @@ def main() -> None:
     parser.add_argument("--customers", type=Path, default=CUSTOMERS_PATH)
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--data-label", default="hillstrom-2008", help="recorded with every output")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     summary = run(args.customers, args.artifacts, args.data_label)
     print(f"sample ratio p value {summary['sample_ratio']['p_value']:.3f}")
     print(pd.DataFrame(summary["effects"])[["arm", "outcome", "effect", "ci_low", "ci_high", "p_holm"]])

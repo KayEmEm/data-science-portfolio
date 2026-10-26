@@ -21,6 +21,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from portfolio_common import sample
+from portfolio_common.config import parse_args
 
 from flow_anomaly.config import (
     ATTACK_NAMES,
@@ -248,7 +249,7 @@ def main() -> None:
     parser.add_argument("--layout", choices=["full", "partition"], default=None)
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     sample.add_arguments(parser, "flows, stratified by attack type and split")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     flows, report = prepare(args.source, args.layout)
     # The audit describes the whole source; the sample is drawn after it.
     n_full = len(flows)

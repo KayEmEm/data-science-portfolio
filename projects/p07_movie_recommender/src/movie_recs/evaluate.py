@@ -16,6 +16,7 @@ from pathlib import Path
 import mlflow
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from movie_recs import baselines
 from movie_recs.config import ARTIFACTS_DIR, DATA_DIR, RECENT_DAYS, K
@@ -52,7 +53,7 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--data-label", default="MovieLens 32M")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     data = load(args.data_dir)
     out = args.artifacts / "evaluation"
     out.mkdir(parents=True, exist_ok=True)

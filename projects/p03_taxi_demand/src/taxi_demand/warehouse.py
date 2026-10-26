@@ -10,6 +10,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 from pandas.tseries.holiday import USFederalHolidayCalendar
 from portfolio_common import sample
+from portfolio_common.config import parse_args
 
 from taxi_demand import config
 
@@ -122,7 +123,7 @@ def main() -> None:
     parser.add_argument("--marts", type=Path, default=config.MARTS_DIR)
     parser.add_argument("--year", type=int, default=config.YEAR)
     sample.add_arguments(parser, "trips of every month")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     build(args.raw_dir, args.warehouse, args.marts, args.year, args.sample, args.sample_seed)
 
 

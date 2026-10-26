@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 from portfolio_common import sample
+from portfolio_common.config import parse_args
 
 from filings_qa.config import (
     DOCUMENTS_FILE,
@@ -116,7 +117,7 @@ def main() -> None:
     parser.add_argument("--skip-pdfs", action="store_true", help="download the question files only")
     parser.add_argument("--out-dir", type=Path, default=QUESTIONS_PATH.parent)
     sample.add_arguments(parser, "filings, each with all the questions on it")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
 
     questions = normalize_questions(
         read_jsonl(fetch(f"{SOURCE_BASE}/data/{QUESTIONS_FILE}", RAW_DIR / QUESTIONS_FILE))

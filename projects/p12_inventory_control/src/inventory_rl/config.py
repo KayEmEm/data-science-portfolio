@@ -4,6 +4,8 @@ import math
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from portfolio_common.config import settings as yaml_settings
+
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
@@ -60,6 +62,7 @@ TUNE_SEED, VALIDATION_SEED, TEST_SEED, REPLAY_SEED = 30_000, 10_000, 20_000, 40_
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class RunSettings:
     """Sizes of the runs. ``scaled`` gives the settings of a --sample run."""
 
@@ -117,6 +120,7 @@ def settings(sample: float = 1.0, quick: bool = False) -> RunSettings:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class PPOSettings:
     learning_rate: float = 3e-4
     n_steps: int = 512  # per environment
@@ -129,6 +133,7 @@ class PPOSettings:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class SACSettings:
     learning_rate: float = 3e-4
     buffer_size: int = 200_000

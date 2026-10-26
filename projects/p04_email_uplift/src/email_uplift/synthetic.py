@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from email_uplift.config import ARMS, CHANNELS, CONTROL, SEED, ZIP_CODES
 from email_uplift.data import normalize
@@ -85,7 +86,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("out", type=Path)
     parser.add_argument("--n", type=int, default=6000)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     customers = write_customers(args.out, args.n)
     print(f"{len(customers):,} synthetic customers written to {args.out}")
 

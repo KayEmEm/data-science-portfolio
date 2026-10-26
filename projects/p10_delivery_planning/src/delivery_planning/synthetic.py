@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import vrplib
+from portfolio_common.config import parse_args
 
 from delivery_planning.config import SEED, WEEK
 
@@ -80,7 +81,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("folder", type=Path)
     parser.add_argument("--customers", type=int, default=25)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     names = write(args.folder, args.customers)
     print(f"{len(names)} synthetic instances in {args.folder}")
 

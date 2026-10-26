@@ -1,0 +1,52 @@
+backtest:
+  data_dir: data
+  artifacts: artifacts
+  models:
+  - snaive
+  - ets
+  - prophet
+  - lgbm
+  - nhits
+  windows: all
+  quick: false
+  force: false
+data:
+  source: null
+  data_dir: data
+  expected_series: 30490
+  sample: 1.0
+  sample_seed: 42
+demand:
+  data_dir: data
+evaluate:
+  data_dir: data
+  artifacts: artifacts
+  data_label: m5
+  quick: false
+report:
+  data_dir: data
+  artifacts: artifacts
+  reports: reports
+synthetic:
+  days: 500
+  items_per_dept: 6
+settings:
+  Backtest:
+    origins:
+    - 1829
+    - 1857
+    - 1885
+    - 1913
+    test_origin: 1941
+    horizon: 28
+  RunSettings:
+    history_days: 1095
+    gbm_train_days: 546
+    gbm_rounds: 600
+    gbm_learning_rate: 0.05
+    gbm_leaves: 127
+    prophet: true
+    neural_epochs: 40
+    interval_levels:
+    - 0.8
+    - 0.95

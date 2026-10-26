@@ -20,6 +20,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 from scipy import stats
 
 from inventory_rl.baselines import load_baselines
@@ -183,7 +184,7 @@ def main() -> None:
     parser.add_argument("--sample", type=float, default=1.0, help="fraction of the test and replay episodes")
     parser.add_argument("--quick", action="store_true", help="small settings for the smoke run")
     parser.add_argument("--data-label", default="M5", help="name of the data in the outputs")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run = settings(args.sample, args.quick)
     products = load_products(args.data_dir)
     demand = load_demand(args.data_dir)

@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from portfolio_common.config import settings as yaml_settings
+
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
@@ -55,6 +57,7 @@ BOOTSTRAP = 200
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class LightGBMSettings:
     n_estimators: int = 1000
     learning_rate: float = 0.03
@@ -66,6 +69,7 @@ class LightGBMSettings:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class GNNSettings:
     hidden: int = 128
     layers: int = 2

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from retail_forecast.config import DATA_DIR, DEMAND_DIR, LEVELS, STORE_DEPT_LEVEL
 from retail_forecast.data import load
@@ -68,7 +69,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--levels", type=int, nargs="+", default=list(range(1, STORE_DEPT_LEVEL + 1)))
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     for path in write_demand_tables(args.data_dir, args.levels):
         print(path)
 

@@ -1,0 +1,35 @@
+app:
+  weights: artifacts/road_damage_yolo11n.onnx
+  imgsz: 512
+data:
+  source: data/raw
+  data_dir: data
+  block: 25
+  sample: 1.0
+  sample_seed: 42
+evaluate:
+  yolo_dir: data/yolo
+  artifacts: artifacts
+  imgsz: 512
+  batch: 16
+export:
+  yolo_dir: data/yolo
+  artifacts: artifacts
+  imgsz: 512
+  images: 200
+report:
+  data_dir: data
+  artifacts: artifacts
+  reports: reports
+synthetic:
+  images: 40
+train:
+  data: data/yolo/dataset.yaml
+  artifacts: artifacts
+  weights: yolo11n.pt
+  epochs: 12
+  imgsz: 512
+  batch: 16
+  workers: 4
+  device: cpu
+  backup: null

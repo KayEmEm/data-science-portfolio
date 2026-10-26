@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+from portfolio_common.config import parse_args
 
 from movie_recs import als, baselines, two_tower
 from movie_recs.config import (
@@ -187,7 +188,7 @@ def main() -> None:
     parser.add_argument("--stages", nargs="+", default=list(STAGES), choices=STAGES)
     parser.add_argument("--quick", action="store_true", help="small settings for the smoke run")
     parser.add_argument("--force", action="store_true", help="refit steps that are already stored")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     data = load(args.data_dir)
     for name in args.stages:
         run_stage(name, data, args.artifacts, args.quick, args.force)

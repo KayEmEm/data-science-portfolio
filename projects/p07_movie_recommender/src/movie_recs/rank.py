@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from movie_recs import ranker
 from movie_recs.config import ARTIFACTS_DIR, DATA_DIR, QUICK_RANKER, SEED, K, RankerSettings
@@ -45,7 +46,7 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--quick", action="store_true")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     settings = QUICK_RANKER if args.quick else RankerSettings()
     data = load(args.data_dir)
 

@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from portfolio_common import sample
+from portfolio_common.config import parse_args
 
 from movie_recs.config import (
     ARCHIVE_ROOT,
@@ -185,7 +186,7 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--no-count-check", action="store_true", help="skip the release size checks")
     sample.add_arguments(parser, "users, each with all their ratings")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     archive = args.source if args.source else download()
     md5 = digest(archive, "md5")
     if args.md5 != "any" and md5 != args.md5.strip().lower():

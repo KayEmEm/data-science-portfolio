@@ -22,6 +22,7 @@ from pathlib import Path
 import mlflow
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from illicit_graph.config import ARTIFACTS_DIR, BOOTSTRAP, DATA_DIR, ILLICIT, SEED, SHUTDOWN_STEP
 from illicit_graph.data import load
@@ -110,7 +111,7 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--data-label", default="Elliptic")
     parser.add_argument("--bootstrap", type=int, default=BOOTSTRAP)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     nodes, _ = load(args.data_dir)
     m = masks(nodes)
     y = (nodes["label"].to_numpy() == ILLICIT).astype(int)

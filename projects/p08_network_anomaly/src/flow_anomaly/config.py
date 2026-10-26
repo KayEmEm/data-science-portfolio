@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from portfolio_common.config import settings as yaml_settings
+
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
@@ -100,6 +102,7 @@ BOOTSTRAP = 200
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class AutoencoderSettings:
     hidden: tuple[int, ...] = (64, 32)
     code: int = 8
@@ -113,12 +116,14 @@ class AutoencoderSettings:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class ForestSettings:
     n_estimators: int = 300
     max_samples: int = 512
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class SupervisedSettings:
     n_estimators: int = 500
     learning_rate: float = 0.05

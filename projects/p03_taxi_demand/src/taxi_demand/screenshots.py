@@ -8,6 +8,8 @@ import sys
 import time
 from pathlib import Path
 
+from portfolio_common.config import parse_args
+
 from taxi_demand import config
 
 APP = config.PROJECT_DIR / "dashboard" / "app.py"
@@ -70,7 +72,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=config.FIGURES_DIR)
     parser.add_argument("--width", type=int, default=1440)
     parser.add_argument("--height", type=int, default=1000)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     for path in capture(args.marts, args.out, args.width, args.height):
         print(path)
 

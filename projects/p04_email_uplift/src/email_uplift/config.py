@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from portfolio_common.config import settings as yaml_settings
+
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
@@ -46,6 +48,7 @@ PRE_PERIOD_COL = "history"  # past year spend, the CUPED covariate
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class Economics:
     """Illustrative unit economics for the targeting policy.
 
@@ -59,6 +62,7 @@ class Economics:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class RunSettings:
     """Uplift model settings. ``quick`` shrinks everything for smoke tests."""
 

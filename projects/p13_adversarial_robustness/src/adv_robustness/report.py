@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from PIL import Image
+from portfolio_common.config import parse_args
 from portfolio_common.plotting import PALETTE, apply_style
 
 from adv_robustness.config import ARTIFACTS_DIR, POISON_TYPE, REPORTS_DIR
@@ -275,7 +276,7 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--reports", type=Path, default=REPORTS_DIR)
     parser.add_argument("--data-label", default="full data")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     apply_style()
     figures = args.reports / "figures"
     figures.mkdir(parents=True, exist_ok=True)

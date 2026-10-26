@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from filings_qa.config import (
     ANTHROPIC_API_URL,
@@ -298,7 +299,7 @@ def main() -> None:
     parser.add_argument("--max-usd", type=float, default=0.0, help="spending limit for paid generators")
     parser.add_argument("--estimate", action="store_true", help="print the cost estimate and stop")
     parser.add_argument("--assumed-output-tokens", type=int, default=1500)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
 
     questions = pd.read_parquet(args.questions)
     if args.limit:

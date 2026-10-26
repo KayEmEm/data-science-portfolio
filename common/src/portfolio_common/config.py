@@ -60,8 +60,12 @@ def _convert(action: argparse.Action, value: Any, base: Path) -> Any:
     """A YAML value as the option would parse it; relative paths resolve from ``base``."""
     if isinstance(value, list):
         return [_convert(action, item, base) for item in value]
-    if action.type is not None and value is not None and not isinstance(value, bool):
-        value = action.type(value if isinstance(value, str) else str(value))
+    kind = action.type
+    if kind is None and isinstance(action.default, Path | list) and action.default:
+        sample = action.default[0] if isinstance(action.default, list) else action.default
+        kind = Path if isinstance(sample, Path) else None
+    if kind is not None and value is not None and not isinstance(value, bool):
+        value = kind(value if isinstance(value, str) else str(value))
     if isinstance(value, Path) and not value.is_absolute():
         value = base / value
     if action.choices is not None and value is not None and value not in action.choices:
@@ -69,13 +73,19 @@ def _convert(action: argparse.Action, value: Any, base: Path) -> Any:
     return value
 
 
-def parse(
+def parse_args(
     parser: argparse.ArgumentParser,
-    project_dir: Path,
-    section: str,
+    source: str | Path,
     argv: list[str] | None = None,
+    section: str | None = None,
 ) -> argparse.Namespace:
-    """Parse the command line with defaults from the ``section`` of the config files."""
+    """Parse the command line with defaults from the config files.
+
+    ``source`` is the ``__file__`` of the command module, at ``<project>/src/<package>/<name>.py``:
+    it gives the project folder and, unless ``section`` is given, the key ``<name>``.
+    """
+    project_dir = Path(source).resolve().parents[2]
+    section = section or Path(source).stem
     parser.add_argument(
         "--config",
         action="append",

@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from portfolio_common.config import settings as yaml_settings
+
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
@@ -68,6 +70,7 @@ RECENT_DAYS = 90  # window of the recent popularity baseline and feature
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class ALSSettings:
     factors: int = 128
     regularization: float = 0.05
@@ -85,6 +88,7 @@ ALS_GRID = [
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class TwoTowerSettings:
     dim: int = 64
     history: int = 50  # most recent movies that describe a user
@@ -100,6 +104,7 @@ class TwoTowerSettings:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class RankerSettings:
     n_estimators: int = 300
     learning_rate: float = 0.05

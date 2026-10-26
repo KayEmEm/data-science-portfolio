@@ -1,0 +1,47 @@
+data:
+  source: null
+  out: data/customers.parquet
+  expected_rows: 64000
+  sample: 1.0
+  sample_seed: 42
+evaluate:
+  artifacts: artifacts
+experiment:
+  customers: data/customers.parquet
+  artifacts: artifacts
+  data_label: hillstrom-2008
+observational:
+  customers: data/customers.parquet
+  artifacts: artifacts
+  data_label: hillstrom-2008
+  replicates: 20
+  simulations: 50
+report:
+  artifacts: artifacts
+  reports: reports
+synthetic:
+  n: 6000
+train:
+  customers: data/customers.parquet
+  artifacts: artifacts
+  quick: false
+  data_label: hillstrom-2008
+  models:
+  - t_learner
+  - x_learner
+  - causal_forest
+  - dr_learner_causalml
+settings:
+  Economics:
+    margin: 0.3
+    cost_per_email: 0.1
+  RunSettings:
+    test_size: 0.3
+    validation_size: 0.25
+    n_estimators: 300
+    learning_rate: 0.03
+    num_leaves: 15
+    min_child_samples: 200
+    forest_trees: 400
+    forest_min_leaf: 100
+    n_bootstrap: 500

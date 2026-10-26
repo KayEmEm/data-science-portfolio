@@ -18,6 +18,7 @@ import pandas as pd
 import yaml
 from PIL import Image
 from portfolio_common import sample
+from portfolio_common.config import parse_args
 
 from road_damage.config import (
     ANNOTATIONS_PATH,
@@ -284,7 +285,7 @@ def main() -> None:
     parser.add_argument("--countries", nargs="+", default=list(COUNTRIES))
     parser.add_argument("--block", type=int, default=SPLIT_BLOCK, help="consecutive images kept in one split")
     sample.add_arguments(parser, "blocks of consecutive images, stratified by country and split")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     args.data_dir.mkdir(parents=True, exist_ok=True)
     counts = build(
         args.source, args.data_dir, tuple(args.countries), args.block, args.sample, args.sample_seed

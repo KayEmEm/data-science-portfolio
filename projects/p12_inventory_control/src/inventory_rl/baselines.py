@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from inventory_rl.config import ARTIFACTS_DIR, DATA_DIR, TUNE_SEED, settings
 from inventory_rl.data import load_products
@@ -112,7 +113,7 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--sample", type=float, default=1.0, help="fraction of the tuning scenarios")
     parser.add_argument("--quick", action="store_true", help="small settings for the smoke run")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run = settings(args.sample, args.quick)
     out = args.artifacts / "baselines"
     out.mkdir(parents=True, exist_ok=True)

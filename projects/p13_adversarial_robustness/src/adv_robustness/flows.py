@@ -37,6 +37,7 @@ from flow_anomaly.detectors import Forest, Supervised
 from flow_anomaly.features import FlowPreprocessor
 from flow_anomaly.metrics import at_threshold, threshold_at_fpr
 from flow_anomaly.train import fit_sample, labeled_sample
+from portfolio_common.config import parse_args
 from portfolio_common.seed import set_seed
 from scipy.stats import beta, norm
 
@@ -377,7 +378,7 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--quick", action="store_true", help="small models, for tests and the smoke run")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run(args.data_dir, args.artifacts, args.quick)
 
 
