@@ -41,7 +41,7 @@ Metrics per age band at the chosen threshold, on the test split:
 | 50 to 59 | 473 | 0.2368 | 0.6237 | 0.2770 | 0.3036 | 0.7822 |
 | 60 and over | 76 | 0.3026 | 0.6053 | 0.2830 | 0.3478 | 0.7445 |
 
-The lowest approval rate relative to the overall rate is 0.905 (60 and over). That group has only 76 clients, so its rates carry wide uncertainty. Groups with a higher observed default rate have lower approval rates.
+The lowest approval rate relative to the overall rate is 0.905 (60 and over). That group has only 76 clients, so its rates carry wide uncertainty. Groups with a higher observed default rate tend to have lower approval rates, but not for every pair: under 30 has a lower default rate than 40 to 49 (0.2233 against 0.2327) and also a lower approval rate (0.6485 against 0.6659).
 
 ## Limits
 

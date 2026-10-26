@@ -85,7 +85,7 @@ make all SOURCE=path/to/online_retail_II.xlsx   # or the zip from UCI, or place 
 make smoke                                      # the same pipeline on synthetic order lines, no data needed
 ```
 
-`make sample SAMPLE=0.25` runs the same pipeline on a seeded share of the real customers with all their order lines, stratified by country. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and has not been run; the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
+`make sample SAMPLE=0.25` runs the same pipeline on a seeded share of the real customers with all their order lines, stratified by country. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and was first run on Colab on 2026-10-26; those outputs are not committed, and the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
 
 `make train` stores each stage under `artifacts/` and skips it when run again. `make smoke` writes everything under `artifacts/smoke/`; its numbers come from synthetic data and say nothing about Online Retail II.
 
