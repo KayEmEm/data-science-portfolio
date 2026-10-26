@@ -6,7 +6,7 @@ Each run clones the repository onto the local disk of the Colab machine, install
 
 ## Pinned version
 
-The notebook runs the code at the tag , not the latest , so a change reaches Colab only after it is reviewed and the pin moves. To move the pin: create a new tag () on the reviewed commit of , and change the default of  in the notebook in the same step.  accepts any branch, tag or commit for a single run.
+The notebook runs the code at the tag `colab-v1`, not the latest `main`, so a change reaches Colab only after it is reviewed and the pin moves. To move the pin: create a new tag (`colab-v2`) on the reviewed commit of `main`, and change the default of `REF` in the notebook in the same step. `REF` accepts any branch, tag or commit for a single run.
 
 ## Drive layout
 
