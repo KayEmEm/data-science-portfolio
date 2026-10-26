@@ -25,6 +25,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 * **Data:** downloaded by a script and never committed. Only synthetic fixtures enter the repository.
 * **Sample runs:** `make sample SAMPLE=<share>` runs a project's real pipeline on a seeded share of whole units (clients, filings, series, users, time step graphs), through `portfolio_common.sample`. Outputs stay under `artifacts/sample/`; the committed results come from the full data.
 * **Settings in YAML:** each project keeps every option of its commands and every field of its settings classes in `config.yaml`, one key per command (`train`, `evaluate`, ...) and `settings` for the classes. A run takes changes from `--config <file>` or from the files listed in `PORTFOLIO_CONFIG`; options on the command line win over all files. `--print-config` shows the resolved values of a command. Relative paths in a file are relative to its folder. Options whose default is computed in code (from the environment, the processor count or a settings class) are not listed, but a file may still set them.
+* **Colab:** [`colab/run_project.ipynb`](colab/run_project.ipynb) runs any project in Google Colab with Google Drive as the only storage, on the free tier or Colab Pro; see [`colab/README.md`](colab/README.md).
 * **Quality gates:** ruff and pytest in GitHub Actions; each project job runs only when its folder or `common/` changes.
 * **Tracking:** MLflow, stored locally.
 * **Honest evaluation:** a simple baseline next to the main model, with the metric chosen for the business question.
@@ -47,6 +48,7 @@ projects/
   p11_illicit_transactions/
   p12_inventory_control/
   p13_adversarial_robustness/  AGPL-3.0, because it uses Ultralytics YOLO
+colab/                  notebook, runner and profiles for Google Colab
 .github/workflows/      one CI workflow
 ```
 

@@ -1,0 +1,4 @@
+# Used by colab/run_project.py: train on the Colab GPU with the 2 processor cores of the machine.
+train:
+  device: "0"
+  workers: 2

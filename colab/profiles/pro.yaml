@@ -1,0 +1,9 @@
+# Colab Pro: the same pipelines on the full data (SAMPLE=1), for more memory and longer sessions.
+target: sample
+sample: 1.0
+mirror_minutes: 10
+mirror_exclude: [data]
+projects:
+  p03: {target: data sample}
+  p10: {target: data sample}
+  p12: {target: all}
