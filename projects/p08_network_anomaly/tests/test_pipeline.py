@@ -13,7 +13,15 @@ def run(*args, cwd):
 
 def test_end_to_end_on_synthetic_flows(full_folder, tmp_path):
     data, artifacts, reports = tmp_path / "data", tmp_path / "artifacts", tmp_path / "reports"
-    run("flow_anomaly.data", "--source", str(full_folder), "--data-dir", str(data), cwd=tmp_path)
+    run(
+        "flow_anomaly.data",
+        "--source",
+        str(full_folder),
+        "--data-dir",
+        str(data),
+        "--no-count-check",
+        cwd=tmp_path,
+    )
     common = ["--data-dir", str(data), "--artifacts", str(artifacts)]
     run("flow_anomaly.train", *common, "--quick", cwd=tmp_path)
     stored = sorted((artifacts / "main" / "scores").iterdir())

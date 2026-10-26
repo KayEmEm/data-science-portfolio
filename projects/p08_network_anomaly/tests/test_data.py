@@ -4,6 +4,7 @@ import pytest
 
 from flow_anomaly.config import FULL_FILES, NORMAL, NUMERIC
 from flow_anomaly.data import SchemaError, detect_layout, prepare, stratified_split
+from flow_anomaly.synthetic import write_full, write_partition
 
 
 def test_full_layout_is_read_with_canonical_names(full_folder, raw_flows):
@@ -46,6 +47,24 @@ def test_partition_layout_keeps_its_test_file(partition_folder):
     assert audit["layout"] == "partition"
     assert (flows.loc[flows["source_role"] == "test", "split"] == "test").all()
     assert set(flows.loc[flows["source_role"] == "train", "split"]) == {"train", "validation"}
+
+
+def test_partition_is_preferred_when_both_layouts_are_present(raw_flows, tmp_path):
+    folder = write_partition(write_full(tmp_path / "both", raw_flows), raw_flows)
+    assert detect_layout(folder) == "partition"
+
+
+def test_count_mismatch_stops_the_data_step(full_folder, tmp_path, monkeypatch):
+    from flow_anomaly import data
+
+    argv = ["data", "--source", str(full_folder), "--data-dir", str(tmp_path / "data")]
+    monkeypatch.setattr("sys.argv", argv)
+    with pytest.raises(SchemaError, match="no-count-check"):
+        data.main()
+    assert not (tmp_path / "data").exists()
+    monkeypatch.setattr("sys.argv", [*argv, "--no-count-check"])
+    data.main()
+    assert (tmp_path / "data" / "audit.json").exists()
 
 
 def test_wrong_column_count_is_refused(full_folder, tmp_path):

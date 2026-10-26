@@ -24,6 +24,8 @@ train:
   quick: false
   force: false
 settings:
+  # Class default only. The ALS model is chosen from ALS_GRID in src/movie_recs/config.py on the
+  # validation window; the selected setting is 128 factors with regularization 0.5 (reports/results.md).
   ALSSettings:
     factors: 128
     regularization: 0.05

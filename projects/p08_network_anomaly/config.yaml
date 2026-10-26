@@ -2,6 +2,7 @@ data:
   source: data/raw
   layout: null
   data_dir: data
+  no_count_check: false
   sample: 1.0
   sample_seed: 42
 evaluate:
