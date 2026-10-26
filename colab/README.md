@@ -45,7 +45,7 @@ The data steps then read the files in `data/raw/` and download nothing. p04, p10
 
 ## Profiles
 
-[`profiles/free.yaml`](profiles/free.yaml) runs the `sample` pipeline of each project on the share set in its Makefile. [`profiles/pro.yaml`](profiles/pro.yaml) runs the same pipelines on the full data (`SAMPLE=1`), for the larger memory and longer sessions of Colab Pro. A profile sets the Makefile targets, the share, and how often outputs are copied to Drive; an entry under `projects` changes these for one project. A project may also hold a `colab.yaml`, which [`run_project.py`](run_project.py) adds to `PORTFOLIO_CONFIG` (p06: train on GPU 0 with 2 workers).
+[`profiles/free.yaml`](profiles/free.yaml) runs the `sample` pipeline of each project on the share set in its Makefile. [`profiles/pro.yaml`](profiles/pro.yaml) runs the same pipelines on the full data (`SAMPLE=1`), for the larger memory and longer sessions of Colab Pro. A profile sets the Makefile targets, the share, and how often outputs are copied to Drive; an entry under `projects` changes these for one project. A project may also hold a `colab.yaml`, which [`run_project.py`](run_project.py) adds to `PORTFOLIO_CONFIG` (p06: train on GPU 0 with 2 workers; p08: go on when the row counts differ from the documented ones, as for the full records).
 
 Most projects write the reports of a run to `artifacts/sample/reports/`, so `out/<project>/reports/` keeps the committed reports. p12 and p13 write their reports to `reports/`, so for these two projects `out/<project>/reports/` holds the reports of the last run.
 
