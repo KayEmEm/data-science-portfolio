@@ -41,8 +41,9 @@ OUTPUTS = ("artifacts", "reports")
 PROFILE_KEYS = {"target", "sample", "mirror_minutes", "mirror_exclude", "projects"}
 PROJECT_KEYS = {"target", "sample"}
 RAW_FILES = REPO / "colab" / "raw_files.yaml"
-ENTRY_KEYS = {"file", "min", "also", "inside", "extract", "source"}
+ENTRY_KEYS = {"file", "folder", "kind", "min", "also", "inside", "extract", "source"}
 MISSING_NAME = "missing_files.txt"
+PARTIAL = ".part"  # suffix of a download in progress; never used
 NO_DATA_TARGETS = {"install", "lint", "test", "smoke", "clean"}  # targets that read no raw files
 
 
@@ -145,6 +146,110 @@ def _matches(raw: Path, pattern: str) -> list[Path]:
     return sorted(p for p in raw.glob(pattern) if p.is_file())
 
 
+def _move(path: Path, out: Path, raw: Path) -> None:
+    out.parent.mkdir(parents=True, exist_ok=True)
+    path.rename(out)
+    print(f"[raw] moved {path.relative_to(raw)} to {out.relative_to(raw)}", flush=True)
+
+
+def _extract(raw: Path, archives: list[Path], entry: dict, kind: str, out_name: str | None) -> int:
+    """Extract the members whose name matches ``kind`` and whose path matches ``inside``.
+
+    With ``out_name`` the first match is written under that name; otherwise every match keeps
+    its own name. Returns the number of files written.
+    """
+    target_dir = (raw / entry["file"]).parent
+    inside = entry.get("inside", "*")
+    count = 0
+    for archive in archives:
+        try:
+            handle = zipfile.ZipFile(archive)
+        except zipfile.BadZipFile:
+            continue
+        with handle:
+            for member in handle.infolist():
+                base = Path(member.filename).name
+                if member.is_dir() or not fnmatch.fnmatch(base, kind):
+                    continue
+                if not fnmatch.fnmatch(member.filename, inside):
+                    continue
+                out = target_dir / (out_name or base)
+                if out.exists():
+                    continue
+                out.parent.mkdir(parents=True, exist_ok=True)
+                with handle.open(member) as source, out.open("wb") as sink:
+                    shutil.copyfileobj(source, sink)
+                print(f"[raw] extracted {member.filename} from {archive.name}", flush=True)
+                count += 1
+                if out_name:
+                    return count
+    return count
+
+
+def _members(archives: list[Path], kind: str, inside: str) -> list[str]:
+    found = []
+    for archive in archives:
+        try:
+            with zipfile.ZipFile(archive) as handle:
+                found += [
+                    m.filename
+                    for m in handle.infolist()
+                    if not m.is_dir()
+                    and fnmatch.fnmatch(Path(m.filename).name, kind)
+                    and fnmatch.fnmatch(m.filename, inside)
+                ]
+        except zipfile.BadZipFile:
+            continue
+    return found
+
+
+def _files(folder: Path) -> list[Path]:
+    return sorted(p for p in folder.rglob("*") if p.is_file() and p.suffix != PARTIAL)
+
+
+def _from_folder(raw: Path, entry: dict) -> str | None:
+    """Take the data from the subfolder of its kind (``folder``), whatever the file names.
+
+    A folder for one file must hold exactly one file of the kind (or one zip that holds it);
+    otherwise the reason is returned. A folder for many files gives all files of the kind.
+    """
+    folder = raw / entry.get("folder", "")
+    if "folder" not in entry or not folder.is_dir():
+        return None
+    pattern = entry["file"]
+    name = Path(pattern).name
+    wildcard = any(c in name for c in "*?[")
+    target_dir = (raw / pattern).parent
+    if wildcard:
+        if folder != target_dir:
+            for path in _files(folder):
+                if fnmatch.fnmatch(path.name, name) and not (target_dir / path.name).exists():
+                    _move(path, target_dir / path.name, raw)
+        if len(_matches(raw, pattern)) < entry.get("min", 1) and entry.get("extract", True):
+            _extract(raw, [p for p in _files(folder) if p.suffix == ".zip"], entry, name, None)
+        return None
+    if (raw / pattern).is_file():
+        return None
+    kind = entry.get("kind", "*" + Path(name).suffix)
+    found = [p for p in _files(folder) if fnmatch.fnmatch(p.name, kind)]
+    if len(found) == 1:
+        _move(found[0], raw / pattern, raw)
+        return None
+    shown = f"{entry['folder']}/"
+    if len(found) > 1:
+        names = ", ".join(p.name for p in found)
+        return f"{shown} must hold one {kind} file, found {len(found)}: {names}"
+    zips = [p for p in _files(folder) if p.suffix == ".zip"]
+    # In a zip: the expected name first; else any member of the kind, when there is only one.
+    if (
+        entry.get("extract", True)
+        and not _extract(raw, zips, entry, name, name)
+        and len(_members(zips, kind, entry.get("inside", "*"))) == 1
+    ):
+        _extract(raw, zips, entry, kind, name)
+    return None  # when nothing was found here, the other rules and the missing list apply
+
+
 def _place(raw: Path, entry: dict) -> None:
     """Move files with other names or places, then extract zip members, to the expected place."""
     pattern = entry["file"]
@@ -154,41 +259,18 @@ def _place(raw: Path, entry: dict) -> None:
     expected = set(_matches(raw, pattern))
     names = list(entry.get("also", [])) + ([] if wildcard else [name])
     for path in sorted(raw.rglob("*")):
-        if not path.is_file() or path in expected or path.suffix == ".part":
+        if not path.is_file() or path in expected or path.suffix == PARTIAL:
             continue
         if any(fnmatch.fnmatch(path.name, n) for n in names):
             out = target_dir / (path.name if wildcard else name)
             if out.exists():
                 continue
-            out.parent.mkdir(parents=True, exist_ok=True)
-            path.rename(out)
-            print(f"[raw] moved {path.relative_to(raw)} to {out.relative_to(raw)}", flush=True)
+            _move(path, out, raw)
             if not wildcard:
                 return
     if len(_matches(raw, pattern)) >= entry.get("min", 1) or not entry.get("extract", True):
         return
-    inside = entry.get("inside", "*")
-    for archive in sorted(raw.rglob("*.zip")):
-        try:
-            handle = zipfile.ZipFile(archive)
-        except zipfile.BadZipFile:
-            continue
-        with handle:
-            for member in handle.infolist():
-                base = Path(member.filename).name
-                if member.is_dir() or not fnmatch.fnmatch(base, name):
-                    continue
-                if not fnmatch.fnmatch(member.filename, inside):
-                    continue
-                out = target_dir / (base if wildcard else name)
-                if out.exists():
-                    continue
-                out.parent.mkdir(parents=True, exist_ok=True)
-                with handle.open(member) as source, out.open("wb") as sink:
-                    shutil.copyfileobj(source, sink)
-                print(f"[raw] extracted {member.filename} from {archive.name}", flush=True)
-                if not wildcard:
-                    return
+    _extract(raw, sorted(raw.rglob("*.zip")), entry, name, None if wildcard else name)
 
 
 def _complete(raw: Path, entries: list) -> bool:
@@ -207,7 +289,8 @@ def _complete_one_of(raw: Path, options: list) -> bool:
 def _describe(entry: dict, raw: Path) -> str:
     found = len(_matches(raw, entry["file"]))
     count = f" (at least {entry['min']}, found {found})" if entry.get("min", 1) > 1 else ""
-    return f"{entry['file']}{count}\n      from: {entry.get('source', 'see colab/README.md')}"
+    where = f"{entry['folder']}/ (any file name)" if "folder" in entry else entry["file"]
+    return f"{where}{count}\n      from: {entry.get('source', 'see colab/README.md')}"
 
 
 def check_raw(raw: Path, entries: list) -> list[str]:
@@ -217,6 +300,7 @@ def check_raw(raw: Path, entries: list) -> list[str]:
         if "one_of" in entry:
             for option in entry["one_of"]:
                 for item in option:
+                    _from_folder(raw, item)
                     _place(raw, item)
                 if _complete(raw, option):
                     break
@@ -228,6 +312,10 @@ def check_raw(raw: Path, entries: list) -> list[str]:
         unknown = sorted(set(entry) - ENTRY_KEYS)
         if unknown:
             raise SystemExit(f"{RAW_FILES}: unknown keys {unknown} in {entry}")
+        problem = _from_folder(raw, entry)
+        if problem:
+            missing.append(problem)
+            continue
         _place(raw, entry)
         if len(_matches(raw, entry["file"])) < entry.get("min", 1):
             missing.append(_describe(entry, raw))
