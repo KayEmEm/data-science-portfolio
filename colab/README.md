@@ -26,7 +26,7 @@ MyDrive/portfolio/
 | p10_delivery_planning | none: `data` downloads the Solomon instances |
 | p11_illicit_transactions | `elliptic_txs_features.csv`, `elliptic_txs_classes.csv`, `elliptic_txs_edgelist.csv` |
 | p12_inventory_control | none: the data step downloads `m5.zip` (or put it here) |
-| p13_adversarial_robustness | `credit/` (the p01 zip), `flows/` (the two p08 files), `images/RDD2022_Czech.zip`, `detector/best.pt` (p06 weights); GPU runtime |
+| p13_adversarial_robustness | `credit/` (the p01 zip), `flows/` (the two p08 files), `images/RDD2022_Czech.zip`, `detector/best.pt` (p06 weights); runs on CPU |
 
 ## Profiles
 
