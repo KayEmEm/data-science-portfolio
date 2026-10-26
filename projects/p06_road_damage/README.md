@@ -61,7 +61,7 @@ make all
 
 `make all` trains on CPU (about 10 hours). For GPU training, upload the two zips and `git archive` of `common/` and this folder to Google Drive and run the Colab notebook; then copy `artifacts/` from its `p06_results.zip` here and run `make evaluate report`. `make smoke` runs the whole pipeline on synthetic zips in about one minute; CI runs it on each push. `make demo` starts the Gradio demo on http://127.0.0.1:7860.
 
-`make sample SAMPLE=0.2` runs the same pipeline on a seeded share of the real blocks of consecutive images, stratified by country and split. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and has not been run; the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
+`make sample SAMPLE=0.2` runs the same pipeline on a seeded share of the real blocks of consecutive images, stratified by country and split. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and was first run on Colab on 2026-10-26; those outputs are not committed, and the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
 
 ## License of this folder
 

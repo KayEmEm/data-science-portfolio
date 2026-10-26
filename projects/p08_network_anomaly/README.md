@@ -75,7 +75,7 @@ make all SOURCE=path/to/csv/files # or a zip, or place the files in data/raw/: a
 make smoke                        # the same pipeline on synthetic flows, no data needed
 ```
 
-`make sample SAMPLE=0.1` runs the same pipeline on a seeded share of the real flows, stratified by attack type and split. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and has not been run; the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
+`make sample SAMPLE=0.1` runs the same pipeline on a seeded share of the real flows, stratified by attack type and split. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and was first run on Colab on 2026-10-26; those outputs are not committed, and the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
 
 `make train` stores every finished detector under `artifacts/` and skips it when run again, and the autoencoder saves each epoch, so a stopped run resumes. `make smoke` writes everything under `artifacts/smoke/`; its numbers come from synthetic data and say nothing about UNSW-NB15.
 
