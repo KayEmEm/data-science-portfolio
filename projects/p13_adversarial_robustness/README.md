@@ -58,7 +58,7 @@ make sample SAMPLE=0.2  # data, attacks, report: about 30 minutes on 4 CPU cores
 make smoke              # the whole pipeline on synthetic sources and an untrained detector, about 5 minutes
 ```
 
-Sources are read from `data/raw/credit` (the UCI zip), `data/raw/flows` (the two partition CSV files), `data/raw/images` (`RDD2022_Czech.zip`) and `data/raw/detector/best.pt`, or from `CREDIT_SOURCE`, `FLOWS_SOURCE`, `IMAGES_SOURCE` and `WEIGHTS`. `make all` runs on the full data; it has not been run. The committed results come from `make sample SAMPLE=0.2` (seed 42).
+Sources are read from `data/raw/credit` (the UCI zip), `data/raw/flows` (the two partition CSV files of project 8, or its four full record files, which are then used instead), `data/raw/images` (`RDD2022_Czech.zip`) and `data/raw/detector/best.pt`, or from `CREDIT_SOURCE`, `FLOWS_SOURCE`, `IMAGES_SOURCE` and `WEIGHTS`. `make all` runs on the full data; it has not been run. The committed results come from `make sample SAMPLE=0.2` (seed 42).
 
 `make smoke` writes everything under `artifacts/smoke/`. Its numbers come from synthetic data and say nothing about any real model.
 

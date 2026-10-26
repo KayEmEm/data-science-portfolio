@@ -6,7 +6,7 @@ Each run clones the repository onto the local disk of the Colab machine, install
 
 ## Pinned version
 
-The notebook runs the code at the tag `colab-v2`, not the latest `main`, so a change reaches Colab only after it is reviewed and the pin moves. To move the pin: create a new tag (`colab-v3`) on the reviewed commit of `main`, and change the default of `REF` in the notebook in the same step. `REF` accepts any branch, tag or commit for a single run.
+The notebook runs the code at the tag `colab-v3`, not the latest `main`, so a change reaches Colab only after it is reviewed and the pin moves. To move the pin: create a new tag (`colab-v4`) on the reviewed commit of `main`, and change the default of `REF` in the notebook in the same step. `REF` accepts any branch, tag or commit for a single run.
 
 ## Drive layout
 
@@ -39,7 +39,7 @@ The data steps then read the files in `data/raw/` and download nothing. p04, p10
 | p10_delivery_planning | `instances/`: the [PyVRP Instances zip at the pinned commit](https://github.com/PyVRP/Instances/archive/7474b068a8effa7f39448b241314b615c9271525.zip) as downloaded (only `VRPTW/Solomon` is used), or the 112 `.vrp` and `.sol` files of that folder |
 | p11_illicit_transactions | `features/`, `classes/`, `edges/`: one CSV each, from [Kaggle](https://www.kaggle.com/datasets/ellipticco/elliptic-data-set) |
 | p12_inventory_control | `m5/`: [`m5.zip`](https://raw.githubusercontent.com/Nixtla/m5-forecasts/main/datasets/m5.zip), the same file as p05 |
-| p13_adversarial_robustness | `credit/`: the p01 zip; `flows_train/`, `flows_test/`: the two p08 partition files; `images/`: the Czech zip of p06; `detector/`: `best.pt` from the p06 run; runs on CPU |
+| p13_adversarial_robustness | `credit/`: the p01 zip; `flows_records/`: the four p08 full record files, with their names, and `flows_features/`: `NUSW-NB15_features.csv` (optional), or else `flows_train/` and `flows_test/`: the two p08 partition files; `images/`: the Czech zip of p06; `detector/`: `best.pt` from the p06 run; runs on CPU |
 
 ## Profiles
 
