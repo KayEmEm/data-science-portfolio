@@ -1,0 +1,10 @@
+# Colab free tier: the sample pipeline of each project, on the share set in its Makefile.
+# A share for every project: set sample here; for one project: under projects.
+target: sample
+sample: null           # null keeps the SAMPLE default of each Makefile
+mirror_minutes: 10     # copy outputs to Drive this often, and once more at the end
+mirror_exclude: [data] # folders not copied to Drive (sample data copies, image sets)
+projects:
+  p03: {target: data sample}  # the data step downloads the trip files that are not in data/raw yet
+  p10: {target: data sample}  # the data step downloads the 56 instances
+  p12: {target: all, sample: 0.1}  # this Makefile has no sample target; SAMPLE applies to all
