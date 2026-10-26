@@ -129,17 +129,17 @@ p13:
     folder: credit
     also: ["*default*credit*card*clients*.zip"]
     source: the p01 file default_of_credit_card_clients.zip
-  - one_of:  # the full records of p08, or else its partition
-      - - file: flows/UNSW-NB15_[1-4].csv
-          folder: flows_records
-          min: 4
-          source: the four p08 files UNSW-NB15_1.csv to UNSW-NB15_4.csv
+  - one_of:  # the partition of p08, as for the committed results, or else its full records
       - - file: flows/UNSW_NB15_training-set.csv
           folder: flows_train
           source: the p08 file of the same name
         - file: flows/UNSW_NB15_testing-set.csv
           folder: flows_test
           source: the p08 file of the same name
+      - - file: flows/UNSW-NB15_[1-4].csv
+          folder: flows_records
+          min: 4
+          source: the four p08 files UNSW-NB15_1.csv to UNSW-NB15_4.csv
   - one_of:  # optional: the column names of the full records
       - - file: flows/NUSW-NB15_features.csv
           folder: flows_features

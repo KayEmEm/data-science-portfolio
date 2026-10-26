@@ -249,7 +249,7 @@ def test_missing_kind_names_its_subfolder(tmp_path):
     assert missing[0].startswith("ratings/ (any file name)")
 
 
-def test_p13_takes_the_full_records_or_else_the_partition(tmp_path):
+def test_p13_takes_the_partition_or_else_the_full_records(tmp_path):
     entries = run_project.read_raw_files(run_project.project_dir("p13"))
     for folder, name in (
         ("credit", "default+of+credit+card+clients.zip"),
@@ -266,3 +266,22 @@ def test_p13_takes_the_full_records_or_else_the_partition(tmp_path):
     missing = run_project.check_raw(tmp_path / "none", entries)
     assert any("flows_records/" in line for line in missing)
     assert any("flows_train/" in line for line in missing)
+
+
+def test_p13_prefers_the_partition_when_both_layouts_are_given(tmp_path):
+    entries = run_project.read_raw_files(run_project.project_dir("p13"))
+    for folder, name in (
+        ("credit", "default+of+credit+card+clients.zip"),
+        ("images", "czech.zip"),
+        ("detector", "best.pt"),
+        ("flows_train", "UNSW_NB15_training-set.csv"),
+        ("flows_test", "UNSW_NB15_testing-set.csv"),
+    ):
+        (tmp_path / folder).mkdir()
+        (tmp_path / folder / name).write_text("x")
+    (tmp_path / "flows_records").mkdir()
+    for i in range(1, 5):
+        (tmp_path / "flows_records" / f"UNSW-NB15_{i}.csv").write_text("x")
+    assert run_project.check_raw(tmp_path, entries) == []
+    assert (tmp_path / "flows" / "UNSW_NB15_training-set.csv").is_file()
+    assert not list((tmp_path / "flows").glob("UNSW-NB15_*.csv"))

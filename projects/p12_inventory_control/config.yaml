@@ -55,44 +55,6 @@ settings:
     replay_episodes: 200
     eval_every: 20000
     n_envs: 8
-  FULL:
-    ppo_steps: 1000000
-    sac_steps: 200000
-    seeds:
-    - 42
-    - 43
-    - 44
-    - 45
-    - 46
-    shaping_seeds:
-    - 42
-    - 43
-    - 44
-    tune_episodes: 200
-    validation_episodes: 50
-    test_episodes: 500
-    replay_episodes: 200
-    eval_every: 20000
-    n_envs: 8
-  QUICK:
-    ppo_steps: 1000000
-    sac_steps: 200000
-    seeds:
-    - 42
-    - 43
-    - 44
-    - 45
-    - 46
-    shaping_seeds:
-    - 42
-    - 43
-    - 44
-    tune_episodes: 200
-    validation_episodes: 50
-    test_episodes: 500
-    replay_episodes: 200
-    eval_every: 20000
-    n_envs: 8
   PPOSettings:
     learning_rate: 0.0003
     n_steps: 512
