@@ -12,34 +12,34 @@ The notebook runs the code at the tag `colab-v2`, not the latest `main`, so a ch
 
 ```
 MyDrive/portfolio/
-  raw/<project folder>/   input files, uploaded once (table below)
+  raw/<project folder>/   input files, uploaded once: one subfolder per kind of data (table below)
   out/<project folder>/   artifacts/ and reports/ of the runs, copied every 10 minutes and at the end
 ```
 
-Every file is downloaded by hand and uploaded once. At the start of a run the files are copied to `data/raw/` of the project and checked against [`raw_files.yaml`](raw_files.yaml), which lists the files that the data step of each project reads:
+Every file is downloaded by hand and uploaded once, into one subfolder per kind of data of the project (table below). The file names do not matter. At the start of a run the files are copied to `data/raw/` of the project and placed under the names the code reads, following [`raw_files.yaml`](raw_files.yaml):
 
-1. A file at its expected name and place is used as it is.
-2. A file with another name (for example `default+of+credit+card+clients.zip`) or in another folder is moved to the expected place.
-3. A file inside a zip (for example the Kaggle `archive.zip` of p11, or the FinanceBench and PyVRP zips as downloaded) is extracted, wherever it sits in the zip. Zips that a project reads directly, such as `m5.zip`, stay as they are.
-4. When a file is still missing, the run stops before the install. The notebook shows the missing files with their sources, and the same list is written to `out/<project folder>/missing_files.txt` on Drive; it is removed by the next complete run.
+1. A subfolder for one file must hold exactly one file of its kind (for example one `.csv` in `p11_illicit_transactions/edges/`), or one zip that holds it; with two or more, the run stops and names them. A subfolder for many files (`trips/`, `pdfs/`, `instances/`, `records/`) gives all its files of the kind, under their names from the source, because the code finds months, filings and instances by those names.
+2. A zip is extracted when the project does not read the zip itself; the member with the expected name is taken first, wherever it sits in the zip.
+3. Files placed outside the subfolders are still found: by the names of the original downloads, or inside any zip in the project folder (for example the Kaggle `archive.zip` of p11).
+4. When data is still missing, the run stops before the install. The notebook shows the missing kinds with their subfolders and sources, and the same list is written to `out/<project folder>/missing_files.txt` on Drive; it is removed by the next complete run.
 
-The data steps then read the files in `data/raw/` and download nothing. p04, p10 and p12, and the full run of p05, check the SHA256 checksum of each file. The targets `smoke`, `test`, `lint`, `install` and `clean` skip the check.
+The data steps then read the files in `data/raw/` and download nothing. p04, p10 and p12, and the full run of p05, check the SHA256 checksum of each file, and p07 its MD5 checksum, so a wrong file stops the run. The targets `smoke`, `test`, `lint`, `install` and `clean` skip the check.
 
-| Project | Files in `raw/<project folder>/` |
+| Project | Subfolders of `raw/<project folder>/` and what each holds |
 | --- | --- |
-| p01_loan_default | `default_of_credit_card_clients.zip` (UCI) |
-| p02_filings_qa | `financebench_open_source.jsonl` and `financebench_document_information.jsonl` (from `data/`) and the folder `pdfs/`, from the [FinanceBench zip at the pinned commit](https://github.com/patronus-ai/financebench/archive/cc39aeb4afdf33909ee1412188bf89035950c2eb.zip); only the 84 filings that the questions cite are read |
-| p03_taxi_demand | `trips/yellow_tripdata_2024-01.parquet` to `-12.parquet` ([TLC trip data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)), [`taxi_zone_lookup.csv`](https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv), and `weather_central_park.csv`: the result of [this NOAA query](https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00094728&startDate=2024-01-01&endDate=2024-12-31&dataTypes=PRCP,SNOW,TMAX,TMIN&units=metric&format=csv) |
-| p04_email_uplift | `hillstrom.csv.gz`: [this file](https://hillstorm1.s3.us-east-2.amazonaws.com/hillstorm_no_indices.csv.gz), renamed |
-| p05_retail_forecasting | [`m5.zip`](https://raw.githubusercontent.com/Nixtla/m5-forecasts/main/datasets/m5.zip) |
-| p06_road_damage | `RDD2022_Czech.zip`, `RDD2022_India.zip` (any zip names that contain `Czech` and `India`); GPU runtime |
-| p07_movie_recommender | `ml-32m.zip` (GroupLens) |
-| p08_network_anomaly | the full records `UNSW-NB15_1.csv` to `UNSW-NB15_4.csv` with `NUSW-NB15_features.csv`, or the partition `UNSW_NB15_training-set.csv` and `UNSW_NB15_testing-set.csv`; with both, the full records are used |
-| p09_customer_segments | `online_retail_II.xlsx`, or the UCI zip that holds it |
-| p10_delivery_planning | the [PyVRP Instances zip at the pinned commit](https://github.com/PyVRP/Instances/archive/7474b068a8effa7f39448b241314b615c9271525.zip) as downloaded, or the 112 `.vrp` and `.sol` files of its folder `VRPTW/Solomon` |
-| p11_illicit_transactions | `elliptic_txs_features.csv`, `elliptic_txs_classes.csv`, `elliptic_txs_edgelist.csv`, or the Kaggle zip that holds them |
-| p12_inventory_control | [`m5.zip`](https://raw.githubusercontent.com/Nixtla/m5-forecasts/main/datasets/m5.zip) (the same file as p05) |
-| p13_adversarial_robustness | the p01 zip, the two p08 partition files, the Czech zip of p06, and `best.pt` from the p06 run; the run moves them to `credit/`, `flows/`, `images/` and `detector/`; runs on CPU |
+| p01_loan_default | `clients/`: the [UCI zip](https://archive.ics.uci.edu/static/public/350/default+of+credit+card+clients.zip) |
+| p02_filings_qa | `questions/`: `financebench_open_source.jsonl`; `documents/`: `financebench_document_information.jsonl`; `pdfs/`: the filings (at least the 84 that the questions cite); all from the [FinanceBench zip at the pinned commit](https://github.com/patronus-ai/financebench/archive/cc39aeb4afdf33909ee1412188bf89035950c2eb.zip), which may also be placed in a subfolder as downloaded |
+| p03_taxi_demand | `trips/`: the 12 monthly files of 2024 ([TLC trip data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)), with their names; `zones/`: [the zone table](https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv); `weather/`: the result of [this NOAA query](https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00094728&startDate=2024-01-01&endDate=2024-12-31&dataTypes=PRCP,SNOW,TMAX,TMIN&units=metric&format=csv) |
+| p04_email_uplift | `customers/`: [the Hillstrom `.gz` file](https://hillstorm1.s3.us-east-2.amazonaws.com/hillstorm_no_indices.csv.gz), not extracted |
+| p05_retail_forecasting | `m5/`: [`m5.zip`](https://raw.githubusercontent.com/Nixtla/m5-forecasts/main/datasets/m5.zip) |
+| p06_road_damage | `czech/`, `india/`: the RDD2022 zip of the country; GPU runtime |
+| p07_movie_recommender | `ratings/`: [`ml-32m.zip`](https://files.grouplens.org/datasets/movielens/ml-32m.zip) |
+| p08_network_anomaly | `records/`: the full records `UNSW-NB15_1.csv` to `UNSW-NB15_4.csv`, with their names; `features/`: `NUSW-NB15_features.csv` (optional); from the [UNSW-NB15 page](https://research.unsw.edu.au/projects/unsw-nb15-dataset). The partition files `UNSW_NB15_training-set.csv` and `UNSW_NB15_testing-set.csv`, placed in the project folder, are used when the full records are absent |
+| p09_customer_segments | `transactions/`: the [UCI](https://archive.ics.uci.edu/dataset/502/online+retail+ii) workbook, or its zip |
+| p10_delivery_planning | `instances/`: the [PyVRP Instances zip at the pinned commit](https://github.com/PyVRP/Instances/archive/7474b068a8effa7f39448b241314b615c9271525.zip) as downloaded (only `VRPTW/Solomon` is used), or the 112 `.vrp` and `.sol` files of that folder |
+| p11_illicit_transactions | `features/`, `classes/`, `edges/`: one CSV each, from [Kaggle](https://www.kaggle.com/datasets/ellipticco/elliptic-data-set) |
+| p12_inventory_control | `m5/`: [`m5.zip`](https://raw.githubusercontent.com/Nixtla/m5-forecasts/main/datasets/m5.zip), the same file as p05 |
+| p13_adversarial_robustness | `credit/`: the p01 zip; `flows_train/`, `flows_test/`: the two p08 partition files; `images/`: the Czech zip of p06; `detector/`: `best.pt` from the p06 run; runs on CPU |
 
 ## Profiles
 

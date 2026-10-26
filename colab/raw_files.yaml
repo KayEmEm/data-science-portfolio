@@ -1,5 +1,10 @@
 # The raw files that the data step of each project reads, under data/raw/ of the project.
+# The files are uploaded to Drive in one subfolder per kind of data (`folder`), with any names.
 # Before a run, colab/run_project.py checks each entry in this order:
+#   0. folder: for one file, the only file of the kind (`kind`, by default the suffix of `file`)
+#      in the subfolder, or the one member of that kind in a zip there, is placed at `file`; two
+#      or more files of the kind stop the run. For a pattern, every file of the subfolder that
+#      matches it is placed next to `file`, with its own name.
 #   1. file: present at this path (a pattern may match several files; at least `min`).
 #   2. A file of the same name elsewhere in data/raw/ (for a name without wildcards), or one whose
 #      name matches a pattern in `also`: moved to the expected place.
@@ -11,53 +16,68 @@
 
 p01:
   - file: default_of_credit_card_clients.zip
+    folder: clients
     also: ["*default*credit*card*clients*.zip"]
     source: https://archive.ics.uci.edu/static/public/350/default+of+credit+card+clients.zip
 
 p02:
   - file: financebench_open_source.jsonl
+    folder: questions
     source: data/ of https://github.com/patronus-ai/financebench/archive/cc39aeb4afdf33909ee1412188bf89035950c2eb.zip
   - file: financebench_document_information.jsonl
+    folder: documents
     source: data/ of https://github.com/patronus-ai/financebench/archive/cc39aeb4afdf33909ee1412188bf89035950c2eb.zip
   - file: pdfs/*.pdf
+    folder: pdfs
     min: 84
     inside: "*pdfs/*"
     source: pdfs/ of https://github.com/patronus-ai/financebench/archive/cc39aeb4afdf33909ee1412188bf89035950c2eb.zip
 
 p03:
   - file: trips/yellow_tripdata_2024-*.parquet
+    folder: trips
     min: 12
     also: [yellow_tripdata_2024-*.parquet]
     source: https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page (Yellow Taxi Trip Records, January to December 2024)
   - file: taxi_zone_lookup.csv
+    folder: zones
     source: https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv
   - file: weather_central_park.csv
+    folder: weather
     source: https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations=USW00094728&startDate=2024-01-01&endDate=2024-12-31&dataTypes=PRCP,SNOW,TMAX,TMIN&units=metric&format=csv
 
 p04:
   - file: hillstrom.csv.gz
+    folder: customers
     also: [hillstorm_no_indices.csv.gz]
     source: https://hillstorm1.s3.us-east-2.amazonaws.com/hillstorm_no_indices.csv.gz
 
 p05:
   - file: m5.zip
+    folder: m5
     source: https://raw.githubusercontent.com/Nixtla/m5-forecasts/main/datasets/m5.zip
 
 p06:
-  - file: "*Czech*.zip"
+  - file: Czech.zip
+    folder: czech
+    also: ["*Czech*.zip"]
     extract: false
     source: RDD2022_Czech.zip of the RDD2022 archive on figshare (record 21431547), named in https://github.com/sekilab/RoadDamageDetector
-  - file: "*India*.zip"
+  - file: India.zip
+    folder: india
+    also: ["*India*.zip"]
     extract: false
     source: RDD2022_India.zip of the RDD2022 archive on figshare (record 21431547), named in https://github.com/sekilab/RoadDamageDetector
 
 p07:
   - file: ml-32m.zip
+    folder: ratings
     source: https://files.grouplens.org/datasets/movielens/ml-32m.zip
 
 p08:
   - one_of:
       - - file: UNSW-NB15_[1-4].csv
+          folder: records
           min: 4
           source: '"CSV Files" of https://research.unsw.edu.au/projects/unsw-nb15-dataset'
       - - file: UNSW_NB15_training-set.csv
@@ -66,47 +86,60 @@ p08:
           source: '"Training and Testing Sets" of https://research.unsw.edu.au/projects/unsw-nb15-dataset'
   - one_of:  # optional: the column names of the full records; the project has a built in list
       - - file: NUSW-NB15_features.csv
+          folder: features
           source: '"CSV Files" of https://research.unsw.edu.au/projects/unsw-nb15-dataset'
       - []
 
 p09:
   - file: online_retail_II.xlsx
+    folder: transactions
     also: ["*online*retail*.xlsx"]
     source: https://archive.ics.uci.edu/dataset/502/online+retail+ii
 
 p10:
   - file: "*.vrp"
+    folder: instances
     min: 56
     inside: "*Solomon/*"
     source: VRPTW/Solomon/ of https://github.com/PyVRP/Instances/archive/7474b068a8effa7f39448b241314b615c9271525.zip
   - file: "*.sol"
+    folder: instances
     min: 56
     inside: "*Solomon/*"
     source: VRPTW/Solomon/ of https://github.com/PyVRP/Instances/archive/7474b068a8effa7f39448b241314b615c9271525.zip
 
 p11:
   - file: elliptic_txs_features.csv
+    folder: features
     source: https://www.kaggle.com/datasets/ellipticco/elliptic-data-set
   - file: elliptic_txs_classes.csv
+    folder: classes
     source: https://www.kaggle.com/datasets/ellipticco/elliptic-data-set
   - file: elliptic_txs_edgelist.csv
+    folder: edges
     source: https://www.kaggle.com/datasets/ellipticco/elliptic-data-set
 
 p12:
   - file: m5.zip
+    folder: m5
     source: https://raw.githubusercontent.com/Nixtla/m5-forecasts/main/datasets/m5.zip
 
 p13:
   - file: credit/default_of_credit_card_clients.zip
+    folder: credit
     also: ["*default*credit*card*clients*.zip"]
     source: the p01 file default_of_credit_card_clients.zip
   - file: flows/UNSW_NB15_training-set.csv
+    folder: flows_train
     source: the p08 file of the same name
   - file: flows/UNSW_NB15_testing-set.csv
+    folder: flows_test
     source: the p08 file of the same name
-  - file: "images/*Czech*.zip"
+  - file: images/Czech.zip
+    folder: images
     also: ["*Czech*.zip"]
     extract: false
-    source: the p06 file RDD2022_Czech.zip
+    source: the p06 file RDD2022_Czech.zip (the czech/ zip of p06)
   - file: detector/best.pt
+    folder: detector
     source: the weights of the p06 run, in out/p06_road_damage/artifacts/ on Drive (runs/<run>/weights/best.pt)

@@ -171,3 +171,70 @@ def test_report_missing_stops_and_keeps_the_list_on_drive(tmp_path):
     assert "hillstrom.csv.gz" in (out / run_project.MISSING_NAME).read_text()
     run_project.report_missing(project, [], tmp_path, out)
     assert not (out / run_project.MISSING_NAME).exists()
+
+
+def test_check_raw_takes_each_kind_of_data_from_its_subfolder_whatever_the_names(tmp_path):
+    entries = run_project.read_raw_files(run_project.project_dir("p11"))
+    for folder in ("features", "classes", "edges"):
+        (tmp_path / folder).mkdir()
+        (tmp_path / folder / f"my {folder} copy.csv").write_text(folder)
+    assert run_project.check_raw(tmp_path, entries) == []
+    assert (tmp_path / "elliptic_txs_edgelist.csv").read_text() == "edges"
+    assert not any(list((tmp_path / f).iterdir()) for f in ("features", "classes", "edges"))
+
+    p06 = tmp_path / "p06"
+    for folder, name in (("czech", "RDD2022 CZ.zip"), ("india", "india data.zip")):
+        _zip(p06 / folder / name, {"x.xml": "x"})
+    assert (
+        run_project.check_raw(p06, run_project.read_raw_files(run_project.project_dir("p06"))) == []
+    )
+    assert (p06 / "Czech.zip").is_file() and (p06 / "India.zip").is_file()
+
+
+def test_subfolder_zip_gives_the_expected_member_or_the_only_one_of_its_kind(tmp_path):
+    p02 = run_project.read_raw_files(run_project.project_dir("p02"))
+    root = "financebench-cc39/"
+    members = {
+        root + "data/financebench_open_source.jsonl": "q",
+        root + "data/financebench_document_information.jsonl": "d",
+        **{f"{root}pdfs/f{i}.pdf": "p" for i in range(84)},
+    }
+    _zip(tmp_path / "questions" / "financebench.zip", members)
+    (tmp_path / "documents").mkdir()
+    (tmp_path / "documents" / "docs.jsonl").write_text("d")
+    assert run_project.check_raw(tmp_path, p02[:2]) == []
+    assert (tmp_path / "financebench_open_source.jsonl").read_text() == "q"
+
+    p09 = tmp_path / "p09"
+    _zip(p09 / "transactions" / "online+retail+ii.zip", {"retail 2009-2011.xlsx": "x"})
+    assert (
+        run_project.check_raw(p09, run_project.read_raw_files(run_project.project_dir("p09"))) == []
+    )
+    assert (p09 / "online_retail_II.xlsx").is_file()
+
+
+def test_subfolder_for_many_files_and_too_many_candidates(tmp_path):
+    p10 = run_project.read_raw_files(run_project.project_dir("p10"))
+    members = {f"I/VRPTW/Solomon/C{i:03d}.{s}": "x" for i in range(56) for s in ("vrp", "sol")}
+    _zip(tmp_path / "instances" / "Instances-7474.zip", members)
+    assert run_project.check_raw(tmp_path, p10) == []
+    assert len(list(tmp_path.glob("*.vrp"))) == 56
+
+    p04 = tmp_path / "p04"
+    (p04 / "customers").mkdir(parents=True)
+    for name in ("a.csv.gz", "b.csv.gz"):
+        (p04 / "customers" / name).write_text("x")
+    missing = run_project.check_raw(p04, run_project.read_raw_files(run_project.project_dir("p04")))
+    assert len(missing) == 1 and "found 2" in missing[0] and "a.csv.gz" in missing[0]
+    (p04 / "customers" / "b.csv.gz").unlink()
+    assert (
+        run_project.check_raw(p04, run_project.read_raw_files(run_project.project_dir("p04"))) == []
+    )
+    assert (p04 / "hillstrom.csv.gz").is_file()
+
+
+def test_missing_kind_names_its_subfolder(tmp_path):
+    missing = run_project.check_raw(
+        tmp_path, run_project.read_raw_files(run_project.project_dir("p07"))
+    )
+    assert missing[0].startswith("ratings/ (any file name)")
