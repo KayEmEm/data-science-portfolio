@@ -9,15 +9,18 @@ Steps, all on the local disk of the Colab machine except the copies to and from 
 
 1. Install the project and the local packages its Makefile installs, with the pinned
    dependencies, except the packages that Colab provides in its own build (torch, torchvision).
-2. Copy the raw files from ``<drive>/raw/<project folder>/`` to ``data/raw/`` of the project,
+2. Copy the raw files from ``<drive>/raw/<project>/`` to ``data/raw/`` of the project,
    and check them against ``colab/raw_files.yaml``: files with other names or inside a zip are
    moved or extracted to the expected place. When a file is still missing, the run stops before
    the install, and the list of missing files is shown and written to
-   ``<drive>/out/<project folder>/missing_files.txt``.
-3. With ``--resume``, copy the saved outputs from ``<drive>/out/<project folder>/`` back.
+   ``<drive>/out/<project>/missing_files.txt``.
+3. With ``--resume``, copy the saved outputs from ``<drive>/out/<project>/`` back.
 4. Run the Makefile target of the profile, with the project ``colab.yaml`` (if any) in
    ``PORTFOLIO_CONFIG``, while a background thread copies outputs to Drive every few minutes.
 5. Copy the outputs to Drive a last time, also when the run fails.
+
+``<project>`` is the project number (``p06``), or the full folder name (``p06_road_damage``)
+when only ``raw/`` holds a folder of that name.
 
 The script uses the standard library and PyYAML only, so that it runs before the install.
 """
@@ -53,6 +56,14 @@ def project_dir(name: str) -> Path:
     if len(matches) != 1:
         raise SystemExit(f"no single project matches {name!r}: {[m.name for m in matches]}")
     return matches[0]
+
+
+def drive_name(drive: Path, project: Path) -> str:
+    """The Drive folder name of a project: its number, or its full name if only that is in raw/."""
+    number = project.name[:3]
+    if not (drive / "raw" / number).is_dir() and (drive / "raw" / project.name).is_dir():
+        return project.name
+    return number
 
 
 def read_profile(name: str) -> dict:
@@ -399,8 +410,9 @@ def main() -> None:
     profile = for_project(read_profile(args.profile), project)
     target = args.target or profile.get("target", "sample")
     sample = args.sample if args.sample is not None else profile.get("sample")
-    drive_raw = args.drive / "raw" / project.name
-    drive_out = args.drive / "out" / project.name
+    name = drive_name(args.drive, project)
+    drive_raw = args.drive / "raw" / name
+    drive_out = args.drive / "out" / name
 
     raw = project / "data" / "raw"
     print(f"Raw files from {drive_raw}:", copy_tree(drive_raw, raw), flush=True)
