@@ -25,6 +25,7 @@ from pathlib import Path
 import networkx as nx
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 from sklearn.metrics import roc_auc_score
 
 from illicit_graph.config import (
@@ -235,7 +236,7 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--samples", type=int, default=BETWEENNESS_SAMPLES)
     parser.add_argument("--force", action="store_true", help="recompute stored measures")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     nodes, edges = load(args.data_dir)
     out = args.artifacts / "network"
     out.mkdir(parents=True, exist_ok=True)

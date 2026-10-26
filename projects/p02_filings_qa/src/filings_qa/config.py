@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from portfolio_common.config import settings as yaml_settings
+
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
@@ -55,6 +57,7 @@ OLLAMA_DEFAULT_URL = "http://localhost:11434"
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class ChunkSettings:
     """Chunks stay inside one page, so every passage cites exactly one page.
 
@@ -67,6 +70,7 @@ class ChunkSettings:
 
 
 @dataclass(frozen=True)
+@yaml_settings(PROJECT_DIR)
 class RetrievalSettings:
     top_k: int = 8
     candidates: int = 50

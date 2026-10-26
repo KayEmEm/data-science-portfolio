@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 from portfolio_common import sample
+from portfolio_common.config import parse_args
 
 from loan_default.config import (
     CLIENTS_PATH,
@@ -82,7 +83,7 @@ def main() -> None:
     parser.add_argument("--skip-download", action="store_true", help="use the archive already in data/raw")
     parser.add_argument("--out", type=Path, default=CLIENTS_PATH)
     sample.add_arguments(parser, "clients, stratified by default")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     if not args.skip_download:
         download()
     clients = read_spreadsheet(find_spreadsheet(RAW_DIR))

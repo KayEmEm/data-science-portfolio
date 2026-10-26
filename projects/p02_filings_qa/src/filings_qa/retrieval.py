@@ -15,6 +15,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from chromadb.api.types import EmbeddingFunction
+from portfolio_common.config import parse_args
 from scipy import sparse
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, CountVectorizer
 
@@ -241,7 +242,7 @@ def main() -> None:
     parser.add_argument("--index-dir", type=Path, default=INDEX_DIR)
     parser.add_argument("--skip-dense", action="store_true", help="build the BM25 index only")
     parser.add_argument("--hashing-embeddings", action="store_true", help="no model download (smoke runs)")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
 
     chunks = pd.read_parquet(args.chunks)
     BM25Retriever.build(chunks).save(args.index_dir / "bm25.joblib")

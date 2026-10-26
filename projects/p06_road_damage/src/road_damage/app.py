@@ -9,6 +9,7 @@ import argparse
 from pathlib import Path
 
 import gradio as gr
+from portfolio_common.config import parse_args
 from ultralytics import YOLO
 
 from road_damage.config import ARTIFACTS_DIR, CLASSES, IMAGE_SIZE
@@ -44,7 +45,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--weights", type=Path, default=DEFAULT_WEIGHTS)
     parser.add_argument("--imgsz", type=int, default=IMAGE_SIZE)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     build_demo(args.weights, args.imgsz).launch(server_name="127.0.0.1")
 
 

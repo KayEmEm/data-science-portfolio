@@ -1,0 +1,71 @@
+data:
+  source: data/raw
+  layout: null
+  data_dir: data
+  sample: 1.0
+  sample_seed: 42
+evaluate:
+  data_dir: data
+  artifacts: artifacts
+  data_label: UNSW-NB15
+  bootstrap: 200
+report:
+  data_dir: data
+  artifacts: artifacts
+  reports: reports
+synthetic:
+  layout: full
+  rows: 20000
+train:
+  data_dir: data
+  artifacts: artifacts
+  only: null
+  quick: false
+  force: false
+settings:
+  AutoencoderSettings:
+    hidden:
+    - 64
+    - 32
+    code: 8
+    epochs: 150
+    patience: 5
+    batch_size: 1024
+    lr: 0.001
+    weight_decay: 1.0e-05
+    holdout: 0.1
+    threads: 4
+  ForestSettings:
+    n_estimators: 300
+    max_samples: 512
+  SupervisedSettings:
+    n_estimators: 500
+    learning_rate: 0.05
+    num_leaves: 63
+    min_child_samples: 50
+    subsample: 0.8
+    colsample_bytree: 0.8
+    early_stopping: 50
+  QUICK_AUTOENCODER:
+    hidden:
+    - 64
+    - 32
+    code: 8
+    epochs: 150
+    patience: 5
+    batch_size: 1024
+    lr: 0.001
+    weight_decay: 1.0e-05
+    holdout: 0.1
+    threads: 4
+  QUICK_FOREST:
+    n_estimators: 300
+    max_samples: 512
+  QUICK_SUPERVISED:
+    n_estimators: 500
+    learning_rate: 0.05
+    num_leaves: 63
+    min_child_samples: 50
+    subsample: 0.8
+    colsample_bytree: 0.8
+    early_stopping: 50

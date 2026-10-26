@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from portfolio_common import sample
+from portfolio_common.config import parse_args
 
 from email_uplift.config import (
     ARM_COL,
@@ -104,7 +105,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=CUSTOMERS_PATH)
     parser.add_argument("--expected-rows", type=int, default=EXPECTED_ROWS, help="0 skips the row check")
     sample.add_arguments(parser, "customers (rows of the source file), stratified by arm")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     source = args.source if args.source else download()
     customers = normalize(pd.read_csv(source), expected_rows=args.expected_rows or None)
     n_full = len(customers)

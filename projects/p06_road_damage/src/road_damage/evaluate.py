@@ -18,6 +18,7 @@ from pathlib import Path
 import mlflow
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 from ultralytics import YOLO, settings
 
 from road_damage.config import ARTIFACTS_DIR, BATCH, CLASSES, IMAGE_SIZE, YOLO_DIR
@@ -148,7 +149,7 @@ def main() -> None:
     parser.add_argument("--runs", nargs="+", default=list(RUNS), choices=list(RUNS))
     parser.add_argument("--imgsz", type=int, default=IMAGE_SIZE)
     parser.add_argument("--batch", type=int, default=BATCH)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     settings.update({"mlflow": False})
     setup_mlflow(args.artifacts)
     results = evaluate(args.yolo_dir, args.artifacts, args.imgsz, args.batch, args.runs)

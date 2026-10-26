@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 import vrplib
 from portfolio_common import sample
+from portfolio_common.config import parse_args
 
 from delivery_planning.config import CLASSES, DATA_DIR, MANIFEST_PATH, RAW_DIR, SCALE, SOURCE_URL, WEEK
 
@@ -262,7 +263,7 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--sha", choices=["pinned", "any"], default="pinned")
     sample.add_arguments(parser, "instances, stratified by class (the shift week is always kept)")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     raw_dir = args.data_dir / "raw"
     if args.sample < sample.FULL and raw_dir.resolve() == RAW_DIR.resolve():
         parser.error("a sample removes instances from its data folder; give a --data-dir other than data")

@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from illicit_graph.config import (
     CLASSES_FILE,
@@ -111,7 +112,7 @@ def main() -> None:
     parser.add_argument("folder", type=Path)
     parser.add_argument("--nodes", type=int, default=20_000)
     parser.add_argument("--seed", type=int, default=SEED)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     write_release(args.folder, args.nodes, args.seed)
     print(f"wrote {args.nodes:,} synthetic transactions to {args.folder}")
 

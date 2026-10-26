@@ -1,0 +1,68 @@
+credit:
+  data_dir: data
+  artifacts: artifacts
+  quick: false
+data:
+  data_dir: data
+  credit_source: data/raw/credit
+  flows_source: data/raw/flows
+  images_source: data/raw/images
+  block: null
+  sample: 1.0
+  sample_seed: 42
+flows:
+  data_dir: data
+  artifacts: artifacts
+  quick: false
+images:
+  data_dir: data
+  artifacts: artifacts
+  weights: data/raw/detector/best.pt
+  imgsz: 512
+  quick: false
+report:
+  artifacts: artifacts
+  reports: reports
+  data_label: full data
+synthetic:
+  clients: 1500
+  flows: 12000
+  images: 40
+settings:
+  CreditBudget:
+    extra_payment: 0.1
+    payment_steps: 11
+    self_reported:
+    - EDUCATION
+    - MARRIAGE
+  FlowBudget:
+    bytes_factor:
+    - 1.0
+    - 1.5
+    - 2.0
+    - 3.0
+    packets_factor:
+    - 1.0
+    - 1.5
+    - 2.0
+    duration_factor:
+    - 1.0
+    - 2.0
+    - 5.0
+    ttl: true
+  ImageBudget:
+    epsilons:
+    - 0.00784313725490196
+    - 0.03137254901960784
+    pgd_steps: 10
+    patch_size: 64
+    patch_steps: 60
+    patch_batch: 8
+    patch_lr: 0.03
+  SmoothingSettings:
+    sigmas:
+    - 0.25
+    - 0.5
+    samples: 100
+    alpha: 0.001
+    rows: 2000

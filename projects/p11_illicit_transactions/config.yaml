@@ -1,0 +1,68 @@
+data:
+  source: data/raw
+  data_dir: data
+  sample: 1.0
+  sample_seed: 42
+evaluate:
+  data_dir: data
+  artifacts: artifacts
+  data_label: Elliptic
+  bootstrap: 200
+neo4j_export:
+  data_dir: data
+  artifacts: artifacts
+network:
+  data_dir: data
+  artifacts: artifacts
+  samples: 256
+  force: false
+report:
+  data_dir: data
+  artifacts: artifacts
+  reports: reports
+synthetic:
+  nodes: 20000
+  seed: 42
+train:
+  data_dir: data
+  artifacts: artifacts
+  only: null
+  quick: false
+  force: false
+settings:
+  LightGBMSettings:
+    n_estimators: 1000
+    learning_rate: 0.03
+    num_leaves: 31
+    min_child_samples: 20
+    subsample: 0.8
+    colsample_bytree: 0.5
+    early_stopping: 100
+  GNNSettings:
+    hidden: 128
+    layers: 2
+    dropout: 0.3
+    lr: 0.005
+    weight_decay: 0.0005
+    epochs: 400
+    patience: 40
+    illicit_weight: 0.0
+    threads: 4
+  QUICK_LIGHTGBM:
+    n_estimators: 1000
+    learning_rate: 0.03
+    num_leaves: 31
+    min_child_samples: 20
+    subsample: 0.8
+    colsample_bytree: 0.5
+    early_stopping: 100
+  QUICK_GNN:
+    hidden: 128
+    layers: 2
+    dropout: 0.3
+    lr: 0.005
+    weight_decay: 0.0005
+    epochs: 400
+    patience: 40
+    illicit_weight: 0.0
+    threads: 4

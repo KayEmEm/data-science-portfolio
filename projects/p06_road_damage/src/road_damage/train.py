@@ -20,6 +20,7 @@ import mlflow
 import numpy as np
 import pandas as pd
 import torch
+from portfolio_common.config import parse_args
 from ultralytics import YOLO, settings
 from ultralytics.utils.downloads import attempt_download_asset
 
@@ -200,7 +201,7 @@ def main() -> None:
     parser.add_argument(
         "--backup", type=Path, default=None, help="folder for a copy of each run after each epoch"
     )
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
 
     args.artifacts.mkdir(parents=True, exist_ok=True)
     settings.update({"mlflow": False})  # runs are logged once, by this module, to the project's own store

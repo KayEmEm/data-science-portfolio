@@ -24,6 +24,7 @@ from pathlib import Path
 import mlflow
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from delivery_planning import shifts as sh
 from delivery_planning.config import (
@@ -363,7 +364,7 @@ def main() -> None:
         "--quick", action="store_true", help="the quick settings of train.py, short MIP limits"
     )
     parser.add_argument("--force", action="store_true", help="solve stored MIPs again")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run(args.data_dir, args.artifacts, args.quick, args.force)
 
 

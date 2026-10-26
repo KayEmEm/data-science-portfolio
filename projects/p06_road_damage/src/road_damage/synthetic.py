@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+from portfolio_common.config import parse_args
 
 from road_damage.config import CLASSES, COUNTRIES, SEED
 
@@ -87,7 +88,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("out_dir", type=Path)
     parser.add_argument("--images", type=int, default=40, help="labelled images per country")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     write_archives(args.out_dir, args.images)
 
 

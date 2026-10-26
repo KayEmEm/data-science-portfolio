@@ -1,0 +1,30 @@
+data:
+  year: 2024
+  raw_dir: data/raw
+  skip_download: false
+  allow_missing: false
+ingest:
+  raw_dir: data/raw
+notebook:
+  warehouse: artifacts/taxi.duckdb
+  out: notebooks/analysis.ipynb
+  no_execute: false
+report:
+  warehouse: artifacts/taxi.duckdb
+  reports: reports
+screenshots:
+  marts: artifacts/marts
+  out: reports/figures
+  width: 1440
+  height: 1000
+synthetic:
+  year: 2024
+  months: 12
+  trips_per_month: 4000
+warehouse:
+  raw_dir: data/raw
+  warehouse: artifacts/taxi.duckdb
+  marts: artifacts/marts
+  year: 2024
+  sample: 1.0
+  sample_seed: 42

@@ -1,0 +1,69 @@
+data:
+  source: null
+  md5: d472be332d4daa821edc399621853b57
+  data_dir: data
+  no_count_check: false
+  sample: 1.0
+  sample_seed: 42
+evaluate:
+  data_dir: data
+  artifacts: artifacts
+  data_label: MovieLens 32M
+rank:
+  data_dir: data
+  artifacts: artifacts
+  quick: false
+report:
+  data_dir: data
+  artifacts: artifacts
+  reports: reports
+synthetic: {}
+train:
+  data_dir: data
+  artifacts: artifacts
+  quick: false
+  force: false
+settings:
+  ALSSettings:
+    factors: 128
+    regularization: 0.05
+    alpha: 1.0
+    iterations: 15
+  TwoTowerSettings:
+    dim: 64
+    history: 50
+    targets_per_user: 20
+    batch_size: 2048
+    epochs: 6
+    lr: 0.002
+    weight_decay: 1.0e-06
+    temperature: 0.05
+    id_dropout: 0.1
+    n_tags: 1000
+    threads: 4
+  RankerSettings:
+    n_estimators: 300
+    learning_rate: 0.05
+    num_leaves: 63
+    min_child_samples: 50
+    subsample: 0.8
+    colsample_bytree: 0.8
+  QUICK_TWO_TOWER:
+    dim: 64
+    history: 50
+    targets_per_user: 20
+    batch_size: 2048
+    epochs: 6
+    lr: 0.002
+    weight_decay: 1.0e-06
+    temperature: 0.05
+    id_dropout: 0.1
+    n_tags: 1000
+    threads: 4
+  QUICK_RANKER:
+    n_estimators: 300
+    learning_rate: 0.05
+    num_leaves: 63
+    min_child_samples: 50
+    subsample: 0.8
+    colsample_bytree: 0.8

@@ -9,6 +9,7 @@ extractive baseline.
 import argparse
 
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from filings_qa.config import CHUNKS_PATH, DOCUMENTS_PATH, INDEX_DIR, RetrievalSettings
 from filings_qa.generation import ExtractiveGenerator, make_generator
@@ -65,7 +66,7 @@ def main() -> None:
     parser.add_argument("--claude-model", default=None, help="Claude model id; needs ANTHROPIC_API_KEY")
     parser.add_argument("--ollama-model", default=None, help="Ollama model tag, for example qwen2.5:7b")
     parser.add_argument("--port", type=int, default=7860)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
 
     if args.claude_model:
         generator = make_generator("claude", args.claude_model, "low")

@@ -20,6 +20,7 @@ from pathlib import Path
 import mlflow
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from retail_forecast import reconcile
 from retail_forecast.backtest import window_dir
@@ -223,7 +224,7 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--data-label", default="m5")
     parser.add_argument("--quick", action="store_true")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     settings = RunSettings.quick() if args.quick else RunSettings()
     plan = json.loads((args.artifacts / "backtest.json").read_text())
     kinds = {o: "backtest" for o in plan["origins"]} | {plan["test_origin"]: "test"}

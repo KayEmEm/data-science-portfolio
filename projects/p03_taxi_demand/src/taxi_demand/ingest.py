@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
+from portfolio_common.config import parse_args
 
 from taxi_demand.config import RAW_DIR, TRIP_COLUMNS, WEATHER_COLUMNS, ZONE_COLUMNS
 from taxi_demand.data import check_trip_file, missing_columns
@@ -71,7 +72,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sources", type=Path, nargs="+", help="files or folders to scan")
     parser.add_argument("--raw-dir", type=Path, default=RAW_DIR)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     placed = ingest(args.sources, args.raw_dir)
     print({k: len(v) for k, v in placed.items()})
 

@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from matplotlib.colors import LinearSegmentedColormap
+from portfolio_common.config import parse_args
 from portfolio_common.plotting import apply_style
 
 from customer_segments.categories import CATEGORIES
@@ -392,7 +393,7 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--reports", type=Path, default=REPORTS_DIR)
     parser.add_argument("--data-label", default="Online Retail II")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run(args.data_dir, args.artifacts, args.reports, args.data_label)
 
 

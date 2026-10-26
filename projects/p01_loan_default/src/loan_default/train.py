@@ -13,6 +13,7 @@ import joblib
 import mlflow
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 from portfolio_common.evaluation import binary_metrics
 from portfolio_common.seed import set_seed
 from sklearn.model_selection import train_test_split
@@ -153,7 +154,7 @@ def main() -> None:
     parser.add_argument("--models", nargs="+", default=MODEL_NAMES, choices=MODEL_NAMES)
     parser.add_argument("--lgd", type=float, default=CostAssumptions.loss_given_default)
     parser.add_argument("--margin", type=float, default=CostAssumptions.margin)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     settings = RunSettings.quick() if args.quick else RunSettings()
     costs = CostAssumptions(loss_given_default=args.lgd, margin=args.margin)
     summary = run(args.features, args.artifacts, settings, costs, args.data_label, args.models)

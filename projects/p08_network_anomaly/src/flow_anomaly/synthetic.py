@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from flow_anomaly.config import FEATURES_FILE, FULL_COLUMNS, FULL_FILES, FULL_RENAME, PARTITION_FILES, SEED
 
@@ -164,7 +165,7 @@ def main() -> None:
     parser.add_argument("folder", type=Path)
     parser.add_argument("--layout", choices=["full", "partition"], default="full")
     parser.add_argument("--rows", type=int, default=20_000)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     flows = make_flows(args.rows)
     writer = write_full if args.layout == "full" else write_partition
     print(f"wrote {len(flows):,} synthetic flows to {writer(args.folder, flows)}")

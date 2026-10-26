@@ -26,6 +26,7 @@ import pandas as pd
 from loan_default.config import EXPOSURE_COL, ID_COL, TARGET_COL, CostAssumptions, RunSettings
 from loan_default.modeling import fit_with_cv
 from loan_default.threshold import best_threshold, profit_curve
+from portfolio_common.config import parse_args
 from portfolio_common.evaluation import binary_metrics
 from portfolio_common.seed import set_seed
 from sklearn.model_selection import train_test_split
@@ -233,7 +234,7 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--quick", action="store_true", help="small models, for tests and the smoke run")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run(args.data_dir, args.artifacts, args.quick)
 
 

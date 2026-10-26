@@ -19,6 +19,7 @@ import re
 from pathlib import Path
 
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from filings_qa.config import QUESTIONS_PATH, RUNS_DIR
 from filings_qa.evaluate_retrieval import CONTEXTS_DIR, page_of
@@ -192,7 +193,7 @@ def main() -> None:
     parser.add_argument("--max-usd", type=float, required=True, help="spending limit per run")
     parser.add_argument("--questions", type=Path, default=QUESTIONS_PATH)
     parser.add_argument("--contexts", type=Path, default=CONTEXTS_DIR)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
 
     runs = args.runs or sorted(p for p in RUNS_DIR.glob("*.jsonl") if not p.name.endswith(".judged.jsonl"))
     questions = pd.read_parquet(args.questions)

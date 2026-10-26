@@ -24,6 +24,7 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 * **Reproducibility:** one `pyproject.toml` with pinned dependencies per project, a fixed seed, and a `Makefile` with `data`, `train` and `evaluate` targets.
 * **Data:** downloaded by a script and never committed. Only synthetic fixtures enter the repository.
 * **Sample runs:** `make sample SAMPLE=<share>` runs a project's real pipeline on a seeded share of whole units (clients, filings, series, users, time step graphs), through `portfolio_common.sample`. Outputs stay under `artifacts/sample/`; the committed results come from the full data.
+* **Settings in YAML:** each project keeps every option of its commands and every field of its settings classes in `config.yaml`, one key per command (`train`, `evaluate`, ...) and `settings` for the classes. A run takes changes from `--config <file>` or from the files listed in `PORTFOLIO_CONFIG`; options on the command line win over all files. `--print-config` shows the resolved values of a command. Relative paths in a file are relative to its folder. Options whose default is computed in code (from the environment, the processor count or a settings class) are not listed, but a file may still set them.
 * **Quality gates:** ruff and pytest in GitHub Actions; each project job runs only when its folder or `common/` changes.
 * **Tracking:** MLflow, stored locally.
 * **Honest evaluation:** a simple baseline next to the main model, with the metric chosen for the business question.
@@ -31,9 +32,9 @@ Thirteen projects, one per task type. Each solves one concrete problem on a publ
 ## Layout
 
 ```
-common/                 shared helpers: seed, metrics, plotting style
+common/                 shared helpers: seed, metrics, plotting style, samples, YAML settings
 projects/
-  p01_loan_default/     own README, pyproject.toml, Makefile, src/, tests/, notebooks/, reports/
+  p01_loan_default/     own README, config.yaml, pyproject.toml, Makefile, src/, tests/, notebooks/, reports/
   p02_filings_qa/
   p03_taxi_demand/
   p04_email_uplift/

@@ -21,6 +21,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from retail_forecast import gbm, neural, reconcile, statistical
 from retail_forecast.config import ARTIFACTS_DIR, DATA_DIR, STORE_DEPT_LEVEL, Backtest, RunSettings
@@ -146,7 +147,7 @@ def main() -> None:
     parser.add_argument("--windows", choices=["backtest", "test", "all"], default="all")
     parser.add_argument("--quick", action="store_true", help="small models for smoke runs")
     parser.add_argument("--force", action="store_true", help="recompute finished windows")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     settings = RunSettings.quick() if args.quick else RunSettings()
     tables = load(args.data_dir)
     backtest = backtest_for(tables["sales"].shape[1])

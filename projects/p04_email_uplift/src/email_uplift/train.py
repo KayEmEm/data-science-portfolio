@@ -14,6 +14,7 @@ from pathlib import Path
 import mlflow
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 from portfolio_common.seed import set_seed
 from sklearn.model_selection import train_test_split
 
@@ -159,7 +160,7 @@ def main() -> None:
     parser.add_argument("--models", nargs="+", default=MODELS, choices=MODELS)
     parser.add_argument("--margin", type=float, default=Economics.margin)
     parser.add_argument("--cost-per-email", type=float, default=Economics.cost_per_email)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     settings = RunSettings.quick() if args.quick else RunSettings()
     economics = Economics(margin=args.margin, cost_per_email=args.cost_per_email)
     summary = run(args.customers, args.artifacts, settings, economics, args.data_label, args.models)

@@ -1,0 +1,66 @@
+data:
+  skip_pdfs: false
+  out_dir: data
+  sample: 1.0
+  sample_seed: 42
+demo:
+  claude_model: null
+  ollama_model: null
+  port: 7860
+evaluate_retrieval:
+  questions: data/questions.parquet
+  chunks: data/chunks.parquet
+  index_dir: data/index
+  reports: reports
+  contexts: artifacts/contexts
+  retrievers:
+  - bm25
+  - dense
+  - hybrid
+  hashing_embeddings: false
+generation:
+  contexts: null
+  generator: null
+  model: null
+  effort: low
+  questions: data/questions.parquet
+  runs_dir: artifacts/runs
+  limit: null
+  max_usd: 0.0
+  estimate: false
+  assumed_output_tokens: 1500
+parse:
+  documents: data/documents.parquet
+  pdf_dir: data/raw/pdfs
+  pages: data/pages.parquet
+  chunks: data/chunks.parquet
+  skip_pdfs: false
+report:
+  runs_dir: artifacts/runs
+  questions: data/questions.parquet
+  reports: reports
+retrieval:
+  chunks: data/chunks.parquet
+  index_dir: data/index
+  skip_dense: false
+  hashing_embeddings: false
+scoring:
+  model: claude-opus-5-5
+  effort: low
+  max_usd: null
+  questions: data/questions.parquet
+  contexts: artifacts/contexts
+sections:
+  pages: data/pages.parquet
+  index_dir: data/index
+  reports: reports
+  skip_embeddings: false
+synthetic: {}
+settings:
+  ChunkSettings:
+    words: 180
+    overlap: 40
+  RetrievalSettings:
+    top_k: 8
+    candidates: 50
+    rrf_k: 60

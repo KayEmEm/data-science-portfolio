@@ -8,6 +8,7 @@ import urllib.request
 from pathlib import Path
 
 import pyarrow.parquet as pq
+from portfolio_common.config import parse_args
 
 from taxi_demand.config import (
     RAW_DIR,
@@ -110,7 +111,7 @@ def main() -> None:
         action="store_true",
         help="skip months the TLC has not published yet (for scheduled runs)",
     )
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     download_all(args.raw_dir, args.year, args.months, args.skip_download, args.allow_missing)
 
 

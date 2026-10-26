@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from taxi_demand.config import SEED, WEATHER_STATION
 
@@ -131,7 +132,7 @@ def main() -> None:
     parser.add_argument("--year", type=int, default=2024)
     parser.add_argument("--months", type=int, default=12)
     parser.add_argument("--trips-per-month", type=int, default=4000)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     write_raw(args.out, args.year, args.months, args.trips_per_month)
 
 

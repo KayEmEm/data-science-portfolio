@@ -19,6 +19,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from flow_anomaly import detectors
 from flow_anomaly.config import (
@@ -208,7 +209,7 @@ def main() -> None:
     parser.add_argument("--only", nargs="*", help="experiments to run (default: all)")
     parser.add_argument("--quick", action="store_true", help="small settings for the smoke run")
     parser.add_argument("--force", action="store_true", help="refit stored detectors")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     flows = load(args.data_dir)
     quick = args.quick
     for name, setup in experiments().items():

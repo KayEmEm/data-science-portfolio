@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 START = pd.Timestamp("2009-12-01")
 END = pd.Timestamp("2011-12-09")
@@ -160,7 +161,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", type=Path)
     parser.add_argument("--customers", type=int, default=600)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     path = write_csv(args.folder, make_lines(args.customers))
     print(f"wrote {path}")
 

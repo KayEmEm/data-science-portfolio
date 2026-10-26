@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from movie_recs.config import ARCHIVE_ROOT, GENRES, SEED, SOURCE_FILES
 
@@ -98,7 +99,7 @@ def write_archive(path: Path, **kwargs) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("path", type=Path)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     write_archive(args.path)
     print(f"synthetic archive written to {args.path}")
 

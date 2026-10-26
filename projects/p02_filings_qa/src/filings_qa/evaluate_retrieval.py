@@ -12,6 +12,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 from portfolio_common.plotting import apply_style
 
 from filings_qa.config import (
@@ -151,7 +152,7 @@ def main() -> None:
     parser.add_argument("--contexts", type=Path, default=CONTEXTS_DIR)
     parser.add_argument("--retrievers", nargs="+", default=["bm25", "dense", "hybrid"])
     parser.add_argument("--hashing-embeddings", action="store_true", help="no model download (smoke runs)")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
 
     settings = RetrievalSettings()
     questions = pd.read_parquet(args.questions)

@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from portfolio_common import sample
+from portfolio_common.config import parse_args
 
 from adv_robustness.config import (
     CREDIT_SOURCE,
@@ -90,7 +91,7 @@ def main() -> None:
     parser.add_argument("--images-source", type=Path, default=IMAGES_SOURCE)
     parser.add_argument("--block", type=int, default=None, help="images per split block (project 6: 25)")
     sample.add_arguments(parser, "clients, flows and image blocks, each stratified as in its project")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     steps = {
         "credit": lambda d: credit(args.credit_source, d, args.sample, args.sample_seed),
         "flows": lambda d: flows(args.flows_source, d, args.sample, args.sample_seed),

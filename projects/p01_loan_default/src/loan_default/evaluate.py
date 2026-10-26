@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import shap
 import xgboost as xgb
+from portfolio_common.config import parse_args
 from portfolio_common.plotting import apply_style
 from sklearn.calibration import calibration_curve
 
@@ -159,7 +160,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--reports", type=Path, default=REPORTS_DIR)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run(args.artifacts, args.reports)
 
 

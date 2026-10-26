@@ -25,6 +25,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 from portfolio_common.plotting import apply_style
 from portfolio_common.seed import set_seed
 from sklearn.dummy import DummyClassifier
@@ -120,7 +121,7 @@ def main() -> None:
     parser.add_argument("--index-dir", type=Path, default=INDEX_DIR)
     parser.add_argument("--reports", type=Path, default=REPORTS_DIR)
     parser.add_argument("--skip-embeddings", action="store_true")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
 
     set_seed(SEED)
     labeled = label_pages(pd.read_parquet(args.pages))

@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from retail_forecast.config import SEED, SOURCE_FILES
 
@@ -138,7 +139,7 @@ def main() -> None:
     parser.add_argument("out", type=Path)
     parser.add_argument("--days", type=int, default=500)
     parser.add_argument("--items-per-dept", type=int, default=6)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     print(write_archive(args.out, args.days, args.items_per_dept))
 
 

@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from customer_segments import clustering
 from customer_segments.config import (
@@ -151,7 +152,7 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--quick", action="store_true", help="small grid and few refits, for tests")
     parser.add_argument("--force", action="store_true", help="refit stages that are stored")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run(args.data_dir, args.artifacts, args.quick, args.force)
 
 

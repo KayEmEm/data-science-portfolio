@@ -27,6 +27,7 @@ import numpy as np
 import torch
 import yaml
 from PIL import Image, ImageFilter
+from portfolio_common.config import parse_args
 from portfolio_common.seed import set_seed
 from road_damage.config import CLASS_IDS
 
@@ -302,7 +303,7 @@ def main() -> None:
     parser.add_argument("--weights", type=Path, default=DETECTOR_WEIGHTS)
     parser.add_argument("--imgsz", type=int, default=IMAGE_SIZE)
     parser.add_argument("--quick", action="store_true", help="few attack steps, for tests and the smoke run")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     run(args.data_dir, args.artifacts, args.weights, args.imgsz, args.quick)
 
 

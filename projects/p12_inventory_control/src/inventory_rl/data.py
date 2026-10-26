@@ -20,6 +20,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from inventory_rl import demand as demand_model
 from inventory_rl.config import (
@@ -250,7 +251,7 @@ def main() -> None:
     parser.add_argument("--source", type=Path, help="a local zip in the M5 layout instead of the download")
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--sample", type=float, default=1.0, help="below 1: read only the sample stores")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     source = args.source or download(args.data_dir / RAW_DIR.name)
     for product in write(source, args.data_dir, args.sample):
         d = product["demand"]

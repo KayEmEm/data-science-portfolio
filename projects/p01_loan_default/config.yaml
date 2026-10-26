@@ -1,0 +1,33 @@
+data:
+  skip_download: false
+  out: data/clients.parquet
+  sample: 1.0
+  sample_seed: 42
+evaluate:
+  artifacts: artifacts
+  reports: reports
+features:
+  clients: data/clients.parquet
+  out: data/features.parquet
+synthetic:
+  n: 3000
+train:
+  features: data/features.parquet
+  artifacts: artifacts
+  quick: false
+  data_label: uci-credit-card-default
+  models:
+  - logistic_regression
+  - lightgbm
+  - xgboost
+settings:
+  CostAssumptions:
+    loss_given_default: 0.45
+    margin: 0.1
+  RunSettings:
+    n_folds: 5
+    test_size: 0.2
+    n_estimators: 2000
+    learning_rate: 0.03
+    early_stopping_rounds: 100
+    shap_sample: 2000

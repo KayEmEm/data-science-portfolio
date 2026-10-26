@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 
 from inventory_rl.config import EXPECTED_DAYS, SEED, SOURCE_FILES
 
@@ -109,7 +110,7 @@ def write_archive(path: Path, seed: int = SEED) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("path", type=Path, help="zip file to write")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     print(write_archive(args.path))
 
 

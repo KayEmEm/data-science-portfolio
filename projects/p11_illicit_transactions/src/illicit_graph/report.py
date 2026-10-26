@@ -9,6 +9,7 @@ import matplotlib.ticker
 import networkx as nx
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 from portfolio_common.plotting import apply_style
 
 from illicit_graph.config import (
@@ -393,7 +394,7 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=DATA_DIR)
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--reports", type=Path, default=REPORTS_DIR)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     apply_style()
     nodes, edges = load(args.data_dir)
     metrics = load_metrics(args.artifacts)

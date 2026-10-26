@@ -10,6 +10,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, PillowWriter
+from portfolio_common.config import parse_args
 from portfolio_common.plotting import apply_style
 
 from inventory_rl.config import ARTIFACTS_DIR, REPORTS_DIR, SHAPING_PRODUCT
@@ -86,7 +87,7 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, default=ARTIFACTS_DIR)
     parser.add_argument("--reports", type=Path, default=REPORTS_DIR)
     parser.add_argument("--product", default=SHAPING_PRODUCT)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     print(animate(args.artifacts, args.product, args.reports / "figures" / "simulated_year.gif"))
 
 

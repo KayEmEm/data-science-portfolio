@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from portfolio_common import sample
+from portfolio_common.config import parse_args
 
 from retail_forecast.config import (
     CALENDAR_PATH,
@@ -237,7 +238,7 @@ def main() -> None:
         "--expected-series", type=int, default=EXPECTED_SERIES, help="0 skips the size checks"
     )
     sample.add_arguments(parser, "item and store series, stratified by store and department")
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
     archive = args.source if args.source else download()
     processed = normalize(read_archive(archive), expected_series=args.expected_series or None)
     n_full = len(processed["series"])

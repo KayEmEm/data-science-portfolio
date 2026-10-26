@@ -7,6 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from portfolio_common.config import parse_args
 from portfolio_common.plotting import apply_style
 
 from filings_qa.config import QUESTIONS_PATH, REPORTS_DIR, RUNS_DIR
@@ -89,7 +90,7 @@ def main() -> None:
     parser.add_argument("--runs-dir", type=Path, default=RUNS_DIR)
     parser.add_argument("--questions", type=Path, default=QUESTIONS_PATH)
     parser.add_argument("--reports", type=Path, default=REPORTS_DIR)
-    args = parser.parse_args()
+    args = parse_args(parser, __file__)
 
     runs = load_runs(args.runs_dir)
     if runs.empty:
