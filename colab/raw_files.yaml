@@ -153,3 +153,9 @@ p13:
   - file: detector/best.pt
     folder: detector
     source: the weights of the p06 run, in out/p06/artifacts/ on Drive (runs/<run>/weights/best.pt)
+
+p14:
+  - file: cookies.txt
+    folder: cookies
+    min: 0  # optional: the sample run crawls the synthetic site and needs no cookie file
+    source: the cookies of the logged in browser, exported in Netscape format
