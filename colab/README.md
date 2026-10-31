@@ -1,6 +1,6 @@
 # Run the projects in Google Colab
 
-[`run_project.ipynb`](run_project.ipynb) runs any of the 13 projects in Colab, with Google Drive as the only storage:
+[`run_project.ipynb`](run_project.ipynb) runs any of the 14 projects in Colab, with Google Drive as the only storage:
 [open it in Colab](https://colab.research.google.com/github/KayEmEm/data-science-portfolio/blob/main/colab/run_project.ipynb).
 Each run clones the repository onto the local disk of the Colab machine, installs the project, copies its raw files from Drive, runs it, and copies the outputs back to Drive. The same notebook and code serve the free tier and Colab Pro; only the profile changes.
 
@@ -42,6 +42,7 @@ The data steps then read the files in `data/raw/` and download nothing. p04, p10
 | p11 | `features/`, `classes/`, `edges/`: one CSV each, from [Kaggle](https://www.kaggle.com/datasets/ellipticco/elliptic-data-set) |
 | p12 | `m5/`: [`m5.zip`](https://raw.githubusercontent.com/Nixtla/m5-forecasts/main/datasets/m5.zip), the same file as p05 |
 | p13 | `credit/`: the p01 zip; `flows_train/` and `flows_test/`: the two p08 partition files, as for the committed results, or else `flows_records/`: the four p08 full record files, with their names, and `flows_features/`: `NUSW-NB15_features.csv` (optional); `images/`: the Czech zip of p06; `detector/`: `best.pt` from the p06 run; runs on CPU |
+| p14 | `cookies/`: the exported cookie file (optional; the sample run crawls the synthetic site and needs none) |
 
 ## Profiles
 

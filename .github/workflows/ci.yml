@@ -26,6 +26,7 @@ jobs:
       p11: ${{ steps.filter.outputs.p11 }}
       p12: ${{ steps.filter.outputs.p12 }}
       p13: ${{ steps.filter.outputs.p13 }}
+      p14: ${{ steps.filter.outputs.p14 }}
     steps:
       - uses: actions/checkout@v4
       - id: filter
@@ -89,6 +90,9 @@ jobs:
               - 'projects/p06_road_damage/**'
               - 'projects/p08_network_anomaly/**'
               - 'projects/p13_adversarial_robustness/**'
+              - '.github/workflows/**'
+            p14:
+              - 'projects/p14_linear_crawler/**'
               - '.github/workflows/**'
 
   common:
@@ -383,4 +387,26 @@ jobs:
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on synthetic sources and an untrained detector (no data download)
+        run: make smoke
+
+  p14_linear_crawler:
+    needs: changes
+    if: needs.changes.outputs.p14 == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/p14_linear_crawler
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # The project does not use the common package.
+      - run: python -m pip install -e ".[dev]"
+      # Chromium with its system libraries; xvfb for the virtual display tests.
+      - run: python -m playwright install --with-deps chromium
+      - run: sudo apt-get install -y xvfb
+      - run: make lint
+      - run: make test
+      - name: Smoke run of a full crawl of the synthetic site (no real site contacted)
         run: make smoke
