@@ -1,4 +1,4 @@
-# Project 14: Linear crawler
+# Project 14: Rail crawler
 
 Follow a series of web pages in which each page links to one file and to the next page, save every file, and stop at the last page, which links to itself. The crawler drives a real Chromium browser with [Playwright](https://playwright.dev/python/), reuses the cookies of a logged in browser session, and is built to run unattended through long series.
 
