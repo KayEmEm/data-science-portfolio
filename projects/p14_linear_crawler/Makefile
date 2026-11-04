@@ -5,7 +5,7 @@ CONFIG ?= config.yaml
 ARGS ?=
 SMOKE_DIR := artifacts/smoke
 
-.PHONY: install browser crawl resume dry-run smoke sample test lint clean
+.PHONY: install browser crawl resume catch-up fill-gaps gaps dry-run smoke sample test lint clean
 
 install:             ## this project and Chromium for Playwright
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -19,6 +19,15 @@ crawl:               ## crawl the series in CONFIG
 
 resume:              ## continue from the page saved in state_file
 	$(PYTHON) -m linear_crawler $(CONFIG) --resume $(ARGS)
+
+catch-up:            ## walk from the entry URL past saved positions, fill gaps, continue
+	$(PYTHON) -m linear_crawler $(CONFIG) --catch-up $(ARGS)
+
+fill-gaps:           ## walk from the entry URL and fill only the gaps
+	$(PYTHON) -m linear_crawler $(CONFIG) --fill-gaps $(ARGS)
+
+gaps:                ## list the gaps in register_file and download_dir; no network
+	$(PYTHON) -m linear_crawler $(CONFIG) --gaps
 
 dry-run:             ## log the extracted links without downloading
 	$(PYTHON) -m linear_crawler $(CONFIG) --dry-run $(ARGS)
