@@ -15,25 +15,25 @@ browser:             ## Chromium and its system libraries (Linux, needs sudo); f
 	$(PYTHON) -m playwright install --with-deps chromium
 
 crawl:               ## crawl the series in CONFIG
-	$(PYTHON) -m linear_crawler $(CONFIG) $(ARGS)
+	$(PYTHON) -m rail_crawler $(CONFIG) $(ARGS)
 
 resume:              ## continue from the page saved in state_file
-	$(PYTHON) -m linear_crawler $(CONFIG) --resume $(ARGS)
+	$(PYTHON) -m rail_crawler $(CONFIG) --resume $(ARGS)
 
 catch-up:            ## walk from the entry URL past saved positions, fill gaps, continue
-	$(PYTHON) -m linear_crawler $(CONFIG) --catch-up $(ARGS)
+	$(PYTHON) -m rail_crawler $(CONFIG) --catch-up $(ARGS)
 
 fill-gaps:           ## walk from the entry URL and fill only the gaps
-	$(PYTHON) -m linear_crawler $(CONFIG) --fill-gaps $(ARGS)
+	$(PYTHON) -m rail_crawler $(CONFIG) --fill-gaps $(ARGS)
 
 gaps:                ## list the gaps in register_file and download_dir; no network
-	$(PYTHON) -m linear_crawler $(CONFIG) --gaps
+	$(PYTHON) -m rail_crawler $(CONFIG) --gaps
 
 dry-run:             ## log the extracted links without downloading
-	$(PYTHON) -m linear_crawler $(CONFIG) --dry-run $(ARGS)
+	$(PYTHON) -m rail_crawler $(CONFIG) --dry-run $(ARGS)
 
 smoke:               ## crawl the synthetic demo site headless; outputs stay under artifacts/smoke
-	$(PYTHON) -m linear_crawler.smoke $(SMOKE_DIR)
+	$(PYTHON) -m rail_crawler.smoke $(SMOKE_DIR)
 
 sample: smoke        ## for the Colab profiles: the smoke crawl; SAMPLE has no effect here
 

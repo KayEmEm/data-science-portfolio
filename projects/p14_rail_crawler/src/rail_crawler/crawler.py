@@ -1,5 +1,5 @@
 """
-Linear page series crawler.
+Rail crawler for a linear page series.
 
 Each page in the series holds a link to a file and a link to the next page.
 The script saves the file of each page and follows the next page link. The
@@ -13,7 +13,7 @@ Stopping a run:
     Ctrl+C      stops at once.
 
 Usage:
-    python -m linear_crawler <config.yaml> [--start-url URL]
+    python -m rail_crawler <config.yaml> [--start-url URL]
                              [--resume | --catch-up | --fill-gaps | --gaps]
                              [--max-pages N] [--dry-run]
 
@@ -390,8 +390,8 @@ def load_config(path):
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
-        prog="python -m linear_crawler",
-        description="Linear page series crawler. See the YAML config for settings.",
+        prog="python -m rail_crawler",
+        description="Rail crawler for a linear page series. See the YAML config for settings.",
     )
     parser.add_argument("config", help="path to the YAML config file")
     parser.add_argument("--start-url", help="entry URL (position 1) instead of start_url")
