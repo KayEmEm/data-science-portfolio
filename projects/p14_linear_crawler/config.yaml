@@ -4,6 +4,7 @@ cookie_file: data/raw/cookies.txt
 crawl_log: artifacts/crawl.log
 manifest_file: artifacts/manifest.csv
 state_file: artifacts/crawl_state.json
+register_file: artifacts/register.csv
 debug_dir: artifacts/debug_pages
 display_mode: visible
 user_agent: ''
@@ -22,6 +23,10 @@ block_subresources: true
 stream_downloads: false
 reject_html_files: true
 skip_saved: true
+max_link_refreshes: 1
+min_walk_delay: 10
+max_walk_delay: 25
+file_number_pattern: null
 session_expired_pattern: null
 halt_on_redirect: true
 cookie_expiry_warn_hours: 24

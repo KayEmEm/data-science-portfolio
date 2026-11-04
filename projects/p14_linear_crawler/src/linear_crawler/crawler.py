@@ -13,26 +13,37 @@ Stopping a run:
     Ctrl+C      stops at once.
 
 Usage:
-    python -m linear_crawler <config.yaml> [--start-url URL | --resume]
+    python -m linear_crawler <config.yaml> [--start-url URL]
+                             [--resume | --catch-up | --fill-gaps | --gaps]
                              [--max-pages N] [--dry-run]
 
+Positions and expiring URLs:
+    The page reached from the entry URL (start_url or --start-url) is position
+    1. register_file keeps one row per position, because page and file URLs can
+    expire between visits. --catch-up and --fill-gaps walk from the entry URL:
+    on positions already done they only read the page source for the next link
+    (no browser visit, no file request), and they process in full only the
+    positions recorded as failed, without a file link, or with the file missing
+    from disk. --resume first tries the URL in state_file and, when that URL no
+    longer gives a page with links, walks from the entry URL as --catch-up does.
+
 Exit codes:
-    0    series complete (final page points to itself)
+    0    series complete (final page points to itself), or --fill-gaps done
     1    run halted before the end of the series
     2    usage or configuration error
     3    another run holds the lock on the download folder
-    display_mode in the config selects how the browser window is shown:
-        visible   normal browser window on the desktop
-        headless  no window; Chromium's newer headless mode (channel "chromium")
-        virtual   normal browser window on a private Xvfb display (needs Xvfb)
-
-    Required config values include user_agent: the "User agent" line from
-    chrome://version in the Chrome browser that exported the cookie file.
-
     4    session expired (session_expired_pattern matched, or a page
          redirected to another path while halt_on_redirect is true)
     130  manual interruption (Ctrl+C, or the Escape key in the terminal)
     143  termination signal (SIGTERM)
+
+display_mode in the config selects how the browser window is shown:
+    visible   normal browser window on the desktop
+    headless  no window; Chromium's newer headless mode (channel "chromium")
+    virtual   normal browser window on a private Xvfb display (needs Xvfb)
+
+Required config values include user_agent: the "User agent" line from
+chrome://version in the Chrome browser that exported the cookie file.
 """
 
 import argparse
@@ -120,6 +131,11 @@ DEFAULTS = {
     "manifest_file": None,
     "skip_saved": True,
     "state_file": None,
+    "register_file": None,
+    "file_number_pattern": None,
+    "max_link_refreshes": 1,
+    "min_walk_delay": None,
+    "max_walk_delay": None,
     "console_level": "INFO",
     "log_max_bytes": 10 * 1024 * 1024,
     "log_backups": 5,
@@ -127,6 +143,10 @@ DEFAULTS = {
 }
 
 BLOCK_STATUSES = frozenset({403, 429, 503})
+# File responses with these statuses are not a file payload: the link is
+# treated as expired and the page is loaded again for a new link. 429 and 5xx
+# are retried with back off instead.
+EXPIRED_STATUSES = frozenset({400, 401, 403, 404, 410})
 BLOCKED_RESOURCE_TYPES = frozenset({"image", "media", "font", "stylesheet"})
 HTML_CONTENT_TYPES = frozenset({"text/html", "application/xhtml+xml"})
 HTTPONLY_PREFIX = "#HttpOnly_"
@@ -180,6 +200,15 @@ MANIFEST_FIELDS = [
     "sha256",
     "status",
 ]
+# Register rows use ROW_SAVE, ROW_MISS and ROW_FAIL as status.
+REGISTER_FIELDS = ["position", "status", "saved_name", "file_number", "size", "sha256", "updated"]
+GAP_SHOWN = 20
+
+# Gap reasons. All reasons have equal length.
+GAP_UNSEEN = "unseen"  # no row for this position
+GAP_FAILED = "failed"  # download failed
+GAP_NOFILE = "nofile"  # page without a file link
+GAP_NODISK = "nodisk"  # saved file no longer in download_dir
 
 # Debug page reasons. All reasons have equal length.
 WHY_NOFILE = "nofile"
@@ -213,6 +242,14 @@ class StopRequested(Exception):
     """The Escape key was pressed."""
 
 
+class LinkExpired(Exception):
+    """The file response is not a file payload; the file link has expired."""
+
+
+class SeriesChanged(Exception):
+    """A file number does not fit between the numbers of its neighbours."""
+
+
 def on_sigterm(_signum, _frame):
     raise Terminated()
 
@@ -234,7 +271,7 @@ def config_error(text):
     sys.exit(EXIT_USAGE)
 
 
-def compile_pattern(pattern, key, need_group=True):
+def compile_pattern(pattern, key, need_group=True, group_of="the URL"):
     try:
         compiled = re.compile(pattern, re.MULTILINE)
     except re.error as e:
@@ -242,7 +279,7 @@ def compile_pattern(pattern, key, need_group=True):
             f"{key} is not a valid Python regex ({e}). Python does not support \\K; use a capture group."
         )
     if need_group and compiled.groups < 1:
-        config_error(f"{key} needs one capture group around the URL.")
+        config_error(f"{key} needs one capture group around {group_of}.")
     return compiled
 
 
@@ -288,10 +325,19 @@ def load_config(path):
             "manifest_file": merged["manifest_file"] or None,
             "skip_saved": bool(merged["skip_saved"]),
             "state_file": merged["state_file"] or None,
+            "register_file": merged["register_file"] or None,
+            "max_link_refreshes": int(merged["max_link_refreshes"]),
             "log_max_bytes": int(merged["log_max_bytes"]),
             "log_backups": int(merged["log_backups"]),
             "escape_key_stop": bool(merged["escape_key_stop"]),
         }
+        # The walk delay falls back to the page delay when it is not set.
+        walk_low = merged["min_walk_delay"]
+        walk_high = merged["max_walk_delay"]
+        cfg["walk_delay"] = (
+            float(merged["min_page_delay"] if walk_low is None else walk_low),
+            float(merged["max_page_delay"] if walk_high is None else walk_high),
+        )
     except (TypeError, ValueError) as e:
         config_error(f"invalid value ({e})")
 
@@ -310,7 +356,7 @@ def load_config(path):
         config_error(f"console_level must be one of {', '.join(CONSOLE_LEVELS)}")
     cfg["console_level"] = CONSOLE_LEVELS[level_name]
 
-    for key in ("page_delay", "firewall_sleep"):
+    for key in ("page_delay", "firewall_sleep", "walk_delay"):
         low, high = cfg[key]
         if low < 0 or high < low:
             config_error(f"{key}: minimum must be >= 0 and <= maximum")
@@ -320,6 +366,7 @@ def load_config(path):
         "max_consecutive_failures",
         "max_browser_restarts",
         "context_restart_pages",
+        "max_link_refreshes",
         "log_max_bytes",
         "log_backups",
     ):
@@ -334,6 +381,10 @@ def load_config(path):
     cfg["session_re"] = (
         compile_pattern(pattern, "session_expired_pattern", need_group=False) if pattern else None
     )
+    pattern = merged["file_number_pattern"]
+    cfg["file_number_re"] = (
+        compile_pattern(pattern, "file_number_pattern", group_of="the file number") if pattern else None
+    )
     return cfg
 
 
@@ -343,9 +394,30 @@ def parse_args(argv=None):
         description="Linear page series crawler. See the YAML config for settings.",
     )
     parser.add_argument("config", help="path to the YAML config file")
-    start = parser.add_mutually_exclusive_group()
-    start.add_argument("--start-url", help="start from this URL instead of start_url")
-    start.add_argument("--resume", action="store_true", help="continue from the page saved in state_file")
+    parser.add_argument("--start-url", help="entry URL (position 1) instead of start_url")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--resume",
+        action="store_true",
+        help="continue from the page saved in state_file; if that URL has expired, "
+        "walk from the entry URL as --catch-up does (needs register_file)",
+    )
+    mode.add_argument(
+        "--catch-up",
+        action="store_true",
+        help="walk from the entry URL past the positions already done, fill the gaps "
+        "on the way, then continue the crawl (needs register_file)",
+    )
+    mode.add_argument(
+        "--fill-gaps",
+        action="store_true",
+        help="walk from the entry URL, fill the gaps, and stop after the last gap (needs register_file)",
+    )
+    mode.add_argument(
+        "--gaps",
+        action="store_true",
+        help="print the gaps in register_file and in download_dir, then exit; no network access",
+    )
     parser.add_argument("--max-pages", type=int, help="override max_pages (0 means no limit)")
     parser.add_argument("--dry-run", action="store_true", help="log the extracted links without downloading")
     args = parser.parse_args(argv)
@@ -708,6 +780,147 @@ class Manifest:
 
 
 # ==============================================================================
+# POSITION REGISTER
+# ==============================================================================
+@dataclass
+class WalkPlan:
+    """Positions up to furthest are done unless listed in gaps."""
+
+    furthest: int
+    gaps: dict
+    stop_after: int = None
+
+    def is_done(self, position):
+        return position <= self.furthest and position not in self.gaps
+
+
+class Register:
+    """
+    One row per position in the series (position 1 = entry page), rewritten
+    after each change. Page and file URLs can expire between visits, so the
+    position identifies a page, not its URL.
+    """
+
+    def __init__(self, path, number_re=None, read_only=False):
+        self.path = path
+        self.number_re = number_re
+        self.read_only = read_only
+        self.rows = {}
+        if path and os.path.isfile(path):
+            with open(path, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    try:
+                        self.rows[int(row["position"])] = row
+                    except (KeyError, TypeError, ValueError):
+                        continue
+
+    def file_number(self, name):
+        """Number from capture group 1 of file_number_pattern in a file name, or None."""
+        if not self.number_re or not name:
+            return None
+        match = self.number_re.search(name)
+        if not match or match.group(1) is None:
+            return None
+        try:
+            return int(match.group(1))
+        except ValueError:
+            return None
+
+    def set(self, position, status, saved_name="", size="", sha256=""):
+        number = self.file_number(saved_name)
+        self.rows[position] = {
+            "position": position,
+            "status": status,
+            "saved_name": saved_name,
+            "file_number": "" if number is None else number,
+            "size": size,
+            "sha256": sha256,
+            "updated": datetime.now().isoformat(timespec="seconds"),
+        }
+        self.write()
+
+    def write(self):
+        if not self.path or self.read_only:
+            return
+        partial = self.path + ".part"
+        with open(partial, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=REGISTER_FIELDS)
+            writer.writeheader()
+            for position in sorted(self.rows):
+                writer.writerow({key: self.rows[position].get(key, "") for key in REGISTER_FIELDS})
+        os.replace(partial, self.path)
+
+    def saved_name(self, position, download_dir):
+        """Name of the file saved for this position if it is still on disk, else None."""
+        row = self.rows.get(position)
+        if (
+            row
+            and row.get("status") == ROW_SAVE
+            and row.get("saved_name")
+            and os.path.isfile(os.path.join(download_dir, row["saved_name"]))
+        ):
+            return row["saved_name"]
+        return None
+
+    def furthest(self):
+        return max(self.rows, default=0)
+
+    def gaps(self, download_dir):
+        """{position: reason} for positions up to the furthest one without a saved file."""
+        found = {}
+        for position in range(1, self.furthest() + 1):
+            row = self.rows.get(position)
+            if row is None:
+                found[position] = GAP_UNSEEN
+            elif row.get("status") == ROW_FAIL:
+                found[position] = GAP_FAILED
+            elif row.get("status") == ROW_MISS:
+                found[position] = GAP_NOFILE
+            elif self.saved_name(position, download_dir) is None:
+                found[position] = GAP_NODISK
+        return found
+
+    def plan(self, download_dir, stop_at_last_gap=False):
+        gaps = self.gaps(download_dir)
+        stop_after = max(gaps) if stop_at_last_gap and gaps else None
+        return WalkPlan(self.furthest(), gaps, stop_after)
+
+    def numbers(self):
+        """[(position, file number)] of saved positions with a number, by position."""
+        pairs = []
+        for position in sorted(self.rows):
+            row = self.rows[position]
+            value = str(row.get("file_number", ""))
+            if row.get("status") == ROW_SAVE and value.isdigit():
+                pairs.append((position, int(value)))
+        return pairs
+
+    def neighbour_numbers(self, position):
+        """File numbers of the nearest saved positions before and after, or None."""
+        before = [n for p, n in self.numbers() if p < position]
+        after = [n for p, n in self.numbers() if p > position]
+        return (before[-1] if before else None), (after[0] if after else None)
+
+    def number_report(self):
+        """
+        Compares the file numbers of neighbouring saved positions. Returns
+        (skipped, open, disorder): numbers missing between adjacent positions,
+        which the site skipped, since no page lies between them; numbers missing
+        across positions that are gaps, which those positions may hold; and
+        positions whose number is not above the number before them.
+        """
+        pairs = self.numbers()
+        skipped, open_numbers, disorder = [], [], []
+        for (p1, n1), (p2, n2) in zip(pairs, pairs[1:], strict=False):
+            if n2 <= n1:
+                disorder.append(p2)
+                continue
+            missing = list(range(n1 + 1, n2))
+            (skipped if p2 == p1 + 1 else open_numbers).extend(missing)
+        return skipped, open_numbers, disorder
+
+
+# ==============================================================================
 # ESCAPE KEY
 # ==============================================================================
 class EscapeWatcher:
@@ -798,8 +1011,13 @@ class Crawler:
         self.cookies = cookies
         self.dry_run = dry_run
         self.manifest = Manifest(None if dry_run else cfg["manifest_file"])
+        self.register = Register(cfg["register_file"], cfg["file_number_re"], read_only=dry_run)
+        # plan: positions to walk past (WalkPlan) or None for a normal crawl.
+        # fallback: (entry URL, WalkPlan) used when a resumed URL has expired.
+        self.plan = None
+        self.fallback = None
         self.part_path = os.path.join(cfg["download_dir"], PART_NAME)
-        self.stats = {"pages": 0, "saved": 0, "skipped": 0}
+        self.stats = {"pages": 0, "walked": 0, "saved": 0, "skipped": 0, "refreshed": 0}
         self.no_file_link = []
         self.failed = []
         self.consecutive_failures = 0
@@ -920,6 +1138,10 @@ class Crawler:
         path = self.cfg["state_file"]
         if not path or self.dry_run:
             return
+        # During a walk, positions up to the furthest one do not move the saved
+        # position back; the end of the series is always recorded.
+        if self.plan is not None and page_number <= self.plan.furthest and not complete:
+            return
         write_json_atomic(
             path,
             {
@@ -1015,6 +1237,17 @@ class Crawler:
             if direct is not None:
                 direct.dispose()
 
+    def walk_source(self, url):
+        """Page source by direct request only, no browser visit. Returns (final_url, raw_html) or None."""
+        attempts = self.cfg["retries"] + 1
+        for attempt in range(1, attempts + 1):
+            loaded, retry_after = self.read_source(url, attempt, attempts)
+            if loaded is not None:
+                return loaded
+            if attempt < attempts:
+                self.wait_retry(attempt, retry_after)
+        return None
+
     def fetch_with_browser(self, file_url, referer):
         response = self.context.request.get(
             file_url, headers={"Referer": referer}, timeout=self.cfg["timeout_ms"]
@@ -1073,7 +1306,11 @@ class Crawler:
             return result
 
     def download_file(self, number, page_url, file_url):
-        """Returns (path, size, sha256) or None. Raises SessionExpired."""
+        """
+        Returns (path, size, sha256) or None. Raises SessionExpired, or
+        LinkExpired when the response is not a file payload: an HTML page, or
+        an HTTP status in EXPIRED_STATUSES.
+        """
         attempts = self.cfg["retries"] + 1
         for attempt in range(1, attempts + 1):
             retry_after = None
@@ -1090,6 +1327,14 @@ class Crawler:
                 log(WARN, f"Download attempt {attempt}/{attempts} failed: {type(e).__name__}: {e}")
 
             if result is not None:
+                if result.status in EXPIRED_STATUSES:
+                    self.remove_part()
+                    log(
+                        WARN,
+                        f"[Page {number}] File response is HTTP {result.status}, not a file; "
+                        "the link is treated as expired.",
+                    )
+                    raise LinkExpired(file_url)
                 if not 200 <= result.status < 300:
                     kind = "possible block" if result.status in BLOCK_STATUSES else "error"
                     log(WARN, f"Download attempt {attempt}/{attempts}: HTTP {result.status} ({kind})")
@@ -1100,12 +1345,11 @@ class Crawler:
                         self.save_debug_page(number, file_url, result.html_text, WHY_EXPIRE)
                         raise SessionExpired(file_url)
                     log(
-                        FAIL,
-                        f"[Page {number}] File response is HTML, not a file "
-                        "(expired session or error page). Not retried.",
+                        WARN,
+                        f"[Page {number}] File response is HTML, not a file; the link is treated as expired.",
                     )
                     self.save_debug_page(number, file_url, result.html_text, WHY_FAILED)
-                    return None
+                    raise LinkExpired(file_url)
                 else:
                     expected = length_mismatch(result.headers, result.size)
                     if expected is not None:
@@ -1126,12 +1370,30 @@ class Crawler:
         return None
 
     # --- Page processing -----------------------------------------------------
+    def check_file_number(self, number, name):
+        """During a walk, raises SeriesChanged if the file number does not fit its neighbours."""
+        if self.plan is None or self.cfg["file_number_re"] is None:
+            return
+        value = self.register.file_number(name)
+        if value is None:
+            log(WARN, f"[Page {number}] file_number_pattern finds no number in {name}.")
+            return
+        before, after = self.register.neighbour_numbers(number)
+        if (before is not None and value <= before) or (after is not None and value >= after):
+            raise SeriesChanged(
+                f"file number {value} at position {number} is not between {before} and {after}"
+            )
+
     def handle_file(self, number, page_url, file_url):
         if self.dry_run:
             log(INFO, f"[Page {number}] Dry run. File link: {file_url}")
             return
         if self.cfg["skip_saved"]:
-            existing = self.manifest.already_saved(file_url, self.cfg["download_dir"])
+            existing = self.register.saved_name(number, self.cfg["download_dir"])
+            if existing is None:
+                existing = self.manifest.already_saved(file_url, self.cfg["download_dir"])
+                if existing is not None:
+                    self.register.set(number, ROW_SAVE, existing)
             if existing:
                 log(INFO, f"[Page {number}] Already saved as {existing}. Skipped.")
                 self.manifest.record(ROW_SKIP, number, page_url, file_url, existing)
@@ -1139,81 +1401,59 @@ class Crawler:
                 self.consecutive_failures = 0
                 return
 
-        log(INFO, f"[Page {number}] File link: {file_url}")
-        saved = self.download_file(number, page_url, file_url)
+        refreshes = self.cfg["max_link_refreshes"]
+        saved = None
+        while True:
+            log(INFO, f"[Page {number}] File link: {file_url}")
+            try:
+                saved = self.download_file(number, page_url, file_url)
+                break
+            except LinkExpired:
+                if refreshes <= 0:
+                    break
+                refreshes -= 1
+                self.stats["refreshed"] += 1
+                log(INFO, f"[Page {number}] Loading the page again for a new file link.")
+                self.sleep(random.uniform(*self.cfg["page_delay"]), "Link refresh delay")
+                file_url = self.fresh_file_link(number, page_url)
+                if file_url is None:
+                    break
+
         if saved:
             path, size, sha256 = saved
             name = os.path.basename(path)
             log(INFO, f"[Page {number}] Saved {name} ({size} bytes)")
             self.manifest.record(ROW_SAVE, number, page_url, file_url, name, size, sha256)
+            self.register.set(number, ROW_SAVE, name, size, sha256)
             self.stats["saved"] += 1
             self.consecutive_failures = 0
+            self.check_file_number(number, name)
         else:
             log(FAIL, f"[Page {number}] Download failed: {file_url}. Continuing.")
             self.manifest.record(ROW_FAIL, number, page_url, file_url)
+            self.register.set(number, ROW_FAIL)
             self.failed.append(file_url)
             self.consecutive_failures += 1
 
-    def process_page(self, number, url, visited):
-        """Returns ("next", url) to continue or ("end", exit_code) to stop."""
-        self.save_state(url, number)
-        loaded = self.load_page(url)
+    def fresh_file_link(self, number, page_url):
+        """Loads the page again and returns its file link, or None. Raises SessionExpired."""
+        loaded = self.load_page(page_url)
         if loaded is None:
-            log(STOP, f"[Page {number}] Page could not be loaded; neither link can be extracted. Halting.")
-            return "end", EXIT_HALTED
-        final_url, source = loaded
-        self.stats["pages"] += 1
-        self.snapshot_cookies()
-        if normalize_url(final_url) != normalize_url(url):
-            log(INFO, f"[Page {number}] Redirected to {final_url}")
-            if self.cfg["halt_on_redirect"] and redirect_changes_path(url, final_url):
-                log(
-                    STOP,
-                    f"[Page {number}] Redirect to another path ({final_url}); "
-                    "possible login redirect. Halting.",
-                )
-                self.save_debug_page(number, final_url, source, WHY_REDRCT)
-                return "end", EXIT_SESSION
-        visited.add(normalize_url(url))
-        visited.add(normalize_url(final_url))
-
+            log(WARN, f"[Page {number}] Page could not be loaded again; its URL may have expired.")
+            return None
+        _final_url, source = loaded
         session_re = self.cfg["session_re"]
         if session_re and session_re.search(source):
-            log(STOP, f"[Page {number}] session_expired_pattern matched on {final_url}. Halting.")
-            self.save_debug_page(number, final_url, source, WHY_EXPIRE)
-            return "end", EXIT_SESSION
+            self.save_debug_page(number, page_url, source, WHY_EXPIRE)
+            raise SessionExpired(page_url)
+        file_urls = extract_urls(self.cfg["file_re"], source, page_url)
+        if not file_urls:
+            log(WARN, f"[Page {number}] Page loaded again has no file link; its URL may have expired.")
+            return None
+        return file_urls[0]
 
-        file_urls = extract_urls(self.cfg["file_re"], source, final_url)
-        next_urls = extract_urls(self.cfg["next_re"], source, final_url)
-        log(DBUG, f"[Page {number}] Matches: {len(file_urls)} file, {len(next_urls)} next")
-
-        if not file_urls and not next_urls:
-            log(STOP, f"[Page {number}] File link and next page link both absent on {final_url}. Halting.")
-            self.save_debug_page(number, final_url, source, WHY_NOLINK)
-            return "end", EXIT_HALTED
-
-        # --- File link ---
-        if file_urls:
-            if len(file_urls) > 1:
-                log(WARN, f"[Page {number}] {len(file_urls)} file link matches; using the first.")
-            try:
-                self.handle_file(number, final_url, file_urls[0])
-            except SessionExpired:
-                log(STOP, f"[Page {number}] session_expired_pattern matched on the file response. Halting.")
-                return "end", EXIT_SESSION
-        else:
-            log(WARN, f"[Page {number}] File link absent on {final_url}. No file saved. Continuing.")
-            self.no_file_link.append(final_url)
-            if not self.dry_run:
-                self.manifest.record(ROW_MISS, number, final_url)
-            self.save_debug_page(number, final_url, source, WHY_NOFILE)
-
-        limit = self.cfg["max_consecutive_failures"]
-        if limit and self.consecutive_failures >= limit:
-            log(STOP, f"{self.consecutive_failures} consecutive failed downloads. Halting.")
-            return "end", EXIT_HALTED
-
-        # --- Next page link ---
+    def follow_next(self, number, url, final_url, source, next_urls, visited):
+        """Next page step shared by full pages and walk steps. Returns ("next", url) or ("end", code)."""
         if not next_urls:
             log(STOP, f"[Page {number}] Next page link absent on {final_url}. Halting.")
             self.save_debug_page(number, final_url, source, WHY_NONEXT)
@@ -1242,15 +1482,128 @@ class Crawler:
             return "end", EXIT_HALTED
         return "next", next_url
 
-    def loop(self, start_url, start_number):
+    def check_redirect(self, number, url, final_url, source):
+        """Returns ("end", EXIT_SESSION) for a redirect to another path under halt_on_redirect, else None."""
+        if normalize_url(final_url) == normalize_url(url):
+            return None
+        log(INFO, f"[Page {number}] Redirected to {final_url}")
+        if self.cfg["halt_on_redirect"] and redirect_changes_path(url, final_url):
+            log(
+                STOP,
+                f"[Page {number}] Redirect to another path ({final_url}); possible login redirect. Halting.",
+            )
+            self.save_debug_page(number, final_url, source, WHY_REDRCT)
+            return "end", EXIT_SESSION
+        return None
+
+    def walk_step(self, number, url, visited):
+        """
+        Passes a position that is already done: reads the page source by direct
+        request for the next link only. No browser visit and no file request.
+        """
+        loaded = self.walk_source(url)
+        if loaded is None:
+            log(STOP, f"[Page {number}] Walk: page source could not be read. Halting.")
+            return "end", EXIT_HALTED
+        final_url, source = loaded
+        self.stats["walked"] += 1
+        redirect = self.check_redirect(number, url, final_url, source)
+        if redirect is not None:
+            return redirect
+        visited.add(normalize_url(url))
+        visited.add(normalize_url(final_url))
+        session_re = self.cfg["session_re"]
+        if session_re and session_re.search(source):
+            log(STOP, f"[Page {number}] session_expired_pattern matched on {final_url}. Halting.")
+            self.save_debug_page(number, final_url, source, WHY_EXPIRE)
+            return "end", EXIT_SESSION
+        next_urls = extract_urls(self.cfg["next_re"], source, final_url)
+        return self.follow_next(number, url, final_url, source, next_urls, visited)
+
+    def process_page(self, number, url, visited, probe=False):
+        """
+        Returns ("next", url) to continue or ("end", exit_code) to stop. With
+        probe (the first page of --resume), returns ("expired", None) when the
+        page cannot be loaded, redirects to another path, or has neither link.
+        """
+        self.save_state(url, number)
+        loaded = self.load_page(url)
+        if loaded is None:
+            if probe:
+                return "expired", None
+            log(STOP, f"[Page {number}] Page could not be loaded; neither link can be extracted. Halting.")
+            return "end", EXIT_HALTED
+        final_url, source = loaded
+        self.stats["pages"] += 1
+        self.snapshot_cookies()
+        if probe and redirect_changes_path(url, final_url):
+            log(INFO, f"[Page {number}] Redirected to {final_url}")
+            return "expired", None
+        redirect = self.check_redirect(number, url, final_url, source)
+        if redirect is not None:
+            return redirect
+        visited.add(normalize_url(url))
+        visited.add(normalize_url(final_url))
+
+        session_re = self.cfg["session_re"]
+        if session_re and session_re.search(source):
+            log(STOP, f"[Page {number}] session_expired_pattern matched on {final_url}. Halting.")
+            self.save_debug_page(number, final_url, source, WHY_EXPIRE)
+            return "end", EXIT_SESSION
+
+        file_urls = extract_urls(self.cfg["file_re"], source, final_url)
+        next_urls = extract_urls(self.cfg["next_re"], source, final_url)
+        log(DBUG, f"[Page {number}] Matches: {len(file_urls)} file, {len(next_urls)} next")
+
+        if not file_urls and not next_urls:
+            if probe:
+                return "expired", None
+            log(STOP, f"[Page {number}] File link and next page link both absent on {final_url}. Halting.")
+            self.save_debug_page(number, final_url, source, WHY_NOLINK)
+            return "end", EXIT_HALTED
+
+        # --- File link ---
+        if file_urls:
+            if len(file_urls) > 1:
+                log(WARN, f"[Page {number}] {len(file_urls)} file link matches; using the first.")
+            try:
+                self.handle_file(number, final_url, file_urls[0])
+            except SessionExpired:
+                log(STOP, f"[Page {number}] session_expired_pattern matched on the file response. Halting.")
+                return "end", EXIT_SESSION
+            except SeriesChanged as e:
+                log(STOP, f"[Page {number}] The series appears changed: {e}. Halting.")
+                return "end", EXIT_HALTED
+        else:
+            log(WARN, f"[Page {number}] File link absent on {final_url}. No file saved. Continuing.")
+            self.no_file_link.append(final_url)
+            if not self.dry_run:
+                self.manifest.record(ROW_MISS, number, final_url)
+                self.register.set(number, ROW_MISS)
+            self.save_debug_page(number, final_url, source, WHY_NOFILE)
+
+        limit = self.cfg["max_consecutive_failures"]
+        if limit and self.consecutive_failures >= limit:
+            log(STOP, f"{self.consecutive_failures} consecutive failed downloads. Halting.")
+            return "end", EXIT_HALTED
+
+        return self.follow_next(number, url, final_url, source, next_urls, visited)
+
+    def loop(self, start_url, start_number, probe=False):
         visited = set()
         url = start_url
         number = start_number
         while True:
             self.check_stop()
-            log(INFO, f"[Page {number}] Loading {url}")
+            walking = self.plan is not None and self.plan.is_done(number)
             try:
-                kind, value = self.process_page(number, url, visited)
+                if walking:
+                    log(INFO, f"[Page {number}] Walk past {url}")
+                    kind, value = self.walk_step(number, url, visited)
+                else:
+                    log(INFO, f"[Page {number}] Loading {url}")
+                    kind, value = self.process_page(number, url, visited, probe=probe)
+                    probe = False
             except BrowserLost as e:
                 self.browser_restarts += 1
                 limit = self.cfg["max_browser_restarts"]
@@ -1268,34 +1621,57 @@ class Crawler:
                 )
                 self.start_browser()
                 continue
+            if kind == "expired":
+                if self.fallback is None:
+                    log(
+                        STOP,
+                        f"[Page {number}] The saved URL no longer gives a page with links (expired). "
+                        "Without register_file the crawler cannot walk from the entry URL. Halting.",
+                    )
+                    return EXIT_HALTED
+                url, self.plan = self.fallback
+                self.fallback = None
+                number = 1
+                visited = set()
+                log(WARN, f"Saved URL has expired. Walking from the entry URL: {url}")
+                log_plan(self.plan)
+                continue
             if kind == "end":
                 return value
+            stop_after = self.plan.stop_after if self.plan is not None else None
+            if not walking and stop_after is not None and number >= stop_after:
+                log(DONE, f"[Page {number}] Last gap processed. Stopping.")
+                return EXIT_DONE
             url = value
             number += 1
-            self.maybe_restart_context()
-            self.sleep(random.uniform(*self.cfg["page_delay"]), "Page delay")
+            if walking:
+                self.sleep(random.uniform(*self.cfg["walk_delay"]), "Walk delay")
+            else:
+                self.maybe_restart_context()
+                self.sleep(random.uniform(*self.cfg["page_delay"]), "Page delay")
 
     def summary(self):
         log(INFO, "--------------------------------------------------------")
         log(
             INFO,
-            f"Pages processed: {self.stats['pages']}. Files saved: "
-            f"{self.stats['saved']}. Skipped as already saved: "
-            f"{self.stats['skipped']}. Failed: {len(self.failed)}.",
+            f"Pages processed: {self.stats['pages']}. Walked past: {self.stats['walked']}. "
+            f"Files saved: {self.stats['saved']}. Skipped as already saved: "
+            f"{self.stats['skipped']}. Link refreshes: {self.stats['refreshed']}. "
+            f"Failed: {len(self.failed)}.",
         )
         for url in self.no_file_link:
             log(WARN, f"Page without file link: {url}")
         for url in self.failed:
             log(FAIL, f"Failed download: {url}")
 
-    def run(self, start_url, start_number=1):
+    def run(self, start_url, start_number=1, probe=False):
         exit_code = EXIT_HALTED
         try:
             with sync_playwright() as pw:
                 self.pw = pw
                 try:
                     self.start_browser()
-                    exit_code = self.loop(start_url, start_number)
+                    exit_code = self.loop(start_url, start_number, probe=probe)
                 except KeyboardInterrupt:
                     log(STOP, "Manual interruption (SIGINT).")
                     exit_code = EXIT_SIGINT
@@ -1321,6 +1697,48 @@ class Crawler:
 
 
 # ==============================================================================
+# GAP REPORT
+# ==============================================================================
+def short_list(values):
+    shown = ", ".join(str(v) for v in values[:GAP_SHOWN])
+    more = len(values) - GAP_SHOWN
+    return f"{shown} and {more} more" if more > 0 else shown
+
+
+def log_plan(plan):
+    log(INFO, f"Walk plan: furthest position {plan.furthest}, {len(plan.gaps)} gaps.")
+    if plan.gaps:
+        log(INFO, f"Gap positions: {short_list(sorted(plan.gaps))}")
+    if plan.stop_after is not None:
+        log(INFO, f"The run stops after position {plan.stop_after}.")
+
+
+def report_gaps(cfg):
+    """Prints the gaps recorded in register_file and found in download_dir. No network access."""
+    register = Register(cfg["register_file"], cfg["file_number_re"], read_only=True)
+    directory = cfg["download_dir"]
+    state = load_state(cfg["state_file"]) if cfg["state_file"] else None
+    complete = bool(state and state.get("complete"))
+    gaps = register.gaps(directory)
+    print(f"Register: {cfg['register_file']}")
+    print(f"Furthest position: {register.furthest()}. Series complete: {'yes' if complete else 'no'}.")
+    print(f"Gaps: {len(gaps)}")
+    for position in sorted(gaps):
+        print(f"  position {position}: {gaps[position]}")
+    if cfg["file_number_re"] is not None:
+        skipped, open_numbers, disorder = register.number_report()
+        print(f"Numbers skipped by the site (between adjacent positions): {short_list(skipped) or 'none'}")
+        print(f"Numbers missing next to gap positions: {short_list(open_numbers) or 'none'}")
+        print(f"Positions with a number not above the one before: {short_list(disorder) or 'none'}")
+    registered = {row.get("saved_name") for row in register.rows.values()}
+    on_disk = []
+    if os.path.isdir(directory):
+        on_disk = sorted(n for n in os.listdir(directory) if not n.startswith(".") and n not in registered)
+    print(f"Files in download_dir not in the register: {short_list(on_disk) or 'none'}")
+    return EXIT_DONE
+
+
+# ==============================================================================
 # ENTRY POINT
 # ==============================================================================
 def main(argv=None):
@@ -1328,11 +1746,16 @@ def main(argv=None):
     cfg = load_config(args.config)
     if args.max_pages is not None:
         cfg["max_pages"] = args.max_pages
+    walk = args.catch_up or args.fill_gaps
+    if (walk or args.gaps) and not cfg["register_file"]:
+        config_error("--catch-up, --fill-gaps and --gaps need register_file in the config")
+    if args.gaps:
+        return report_gaps(cfg)
 
     os.makedirs(cfg["download_dir"], exist_ok=True)
     if cfg["debug_dir"]:
         os.makedirs(cfg["debug_dir"], exist_ok=True)
-    for key in ("crawl_log", "manifest_file", "state_file"):
+    for key in ("crawl_log", "manifest_file", "state_file", "register_file"):
         ensure_parent_dir(cfg[key])
     setup_logging(cfg)
 
@@ -1344,9 +1767,8 @@ def main(argv=None):
 
     try:
         log(INFO, f"--- Session start. Config: {args.config}{'. Dry run' if args.dry_run else ''} ---")
-        start_url, start_number = cfg["start_url"], 1
-        if args.start_url:
-            start_url = args.start_url
+        entry_url = args.start_url or cfg["start_url"]
+        start_url, start_number = entry_url, 1
         if args.resume:
             if not cfg["state_file"]:
                 log(FAIL, "--resume needs state_file in the config.")
@@ -1372,6 +1794,15 @@ def main(argv=None):
         check_display(cfg["display_mode"])
 
         crawler = Crawler(cfg, cookies, dry_run=args.dry_run)
+        if walk:
+            crawler.plan = crawler.register.plan(cfg["download_dir"], stop_at_last_gap=args.fill_gaps)
+            if args.fill_gaps and not crawler.plan.gaps:
+                log(DONE, f"No gaps up to position {crawler.plan.furthest}. Nothing to do.")
+                return EXIT_DONE
+            log(INFO, f"Walking from the entry URL: {entry_url}")
+            log_plan(crawler.plan)
+        if args.resume and cfg["register_file"]:
+            crawler.fallback = (entry_url, crawler.register.plan(cfg["download_dir"]))
         watcher = EscapeWatcher(crawler.stop_event)
         if cfg["escape_key_stop"]:
             reason = watcher.start()
@@ -1380,7 +1811,7 @@ def main(argv=None):
             else:
                 log(INFO, f"Escape key stop is not active: {reason}.")
         try:
-            return crawler.run(start_url, start_number)
+            return crawler.run(start_url, start_number, probe=args.resume)
         finally:
             watcher.stop()
     finally:

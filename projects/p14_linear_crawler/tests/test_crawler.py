@@ -556,3 +556,198 @@ def test_ctrl_c_still_works_in_cbreak_mode(tmp_path, site):
     output = run_in_terminal(config, [("Page delay", 1, b"\x03")])
     assert "Manual interruption (SIGINT)" in output, output
     assert "Pages processed: 1" in output
+
+
+# ==============================================================================
+# EXPIRING LINKS, POSITION REGISTER, WALK AND GAPS
+# ==============================================================================
+TOKEN_FILES = ["1.jpg", "2.jpg", "4.jpg", "6.jpg", "7.jpg"]
+NUMBER_PATTERN = r"^(\d+)\.jpg$"
+
+
+def test_register_gaps_plan_and_numbers(tmp_path):
+    number_re = crawler.compile_pattern(NUMBER_PATTERN, "n", group_of="the file number")
+    path = str(tmp_path / "register.csv")
+    register = crawler.Register(path, number_re)
+    for name in ("1.jpg", "2.jpg", "6.jpg", "7.jpg"):
+        (tmp_path / name).write_bytes(b"1")
+    register.set(1, crawler.ROW_SAVE, "1.jpg")
+    register.set(2, crawler.ROW_SAVE, "2.jpg")
+    register.set(3, crawler.ROW_MISS)
+    register.set(5, crawler.ROW_SAVE, "6.jpg")
+    register.set(6, crawler.ROW_SAVE, "7.jpg")
+    register.set(7, crawler.ROW_FAIL)
+    register.set(8, crawler.ROW_SAVE, "9.jpg")  # file deleted from disk
+    again = crawler.Register(path, number_re)
+    assert again.gaps(str(tmp_path)) == {
+        3: crawler.GAP_NOFILE,
+        4: crawler.GAP_UNSEEN,
+        7: crawler.GAP_FAILED,
+        8: crawler.GAP_NODISK,
+    }
+    plan = again.plan(str(tmp_path), stop_at_last_gap=True)
+    assert plan.furthest == 8 and plan.stop_after == 8
+    assert plan.is_done(1) and not plan.is_done(3) and not plan.is_done(9)
+    # 3, 4 and 5 lie across gap positions 3 and 4; 8 lies across gap position 7.
+    assert again.number_report() == ([], [3, 4, 5, 8], [])
+    assert again.neighbour_numbers(4) == (2, 6)
+
+
+def test_number_report_site_skip_and_disorder(tmp_path):
+    number_re = crawler.compile_pattern(NUMBER_PATTERN, "n", group_of="the file number")
+    register = crawler.Register(None, number_re)
+    register.set(1, crawler.ROW_SAVE, "1.jpg")
+    register.set(2, crawler.ROW_SAVE, "3.jpg")
+    register.set(3, crawler.ROW_SAVE, "2.jpg")
+    assert register.number_report() == ([2], [], [3])
+
+
+def test_walk_modes_need_register(tmp_path, site):
+    config = make_config(tmp_path, site, "/p1.html")
+    for option in ("--catch-up", "--fill-gaps", "--gaps"):
+        result = run(config, option)
+        assert result.returncode == 2
+        assert "need register_file" in result.stderr
+
+
+def token_config(tmp_path, site, **overrides):
+    overrides.setdefault("register_file", str(tmp_path / "register.csv"))
+    overrides.setdefault("file_number_pattern", NUMBER_PATTERN)
+    config = make_config(tmp_path, site, "/e1.html", **overrides)
+    with open(config, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    cfg["start_url"] = demo_site.entry_url(site)
+    with open(config, "w", encoding="utf-8") as f:
+        yaml.safe_dump(cfg, f, sort_keys=False)
+    return config
+
+
+def counts_since(site, before):
+    return {path: n - before.get(path, 0) for path, n in site.counts.items() if n != before.get(path, 0)}
+
+
+def test_rerun_with_expired_links_skips_by_position(tmp_path, site):
+    config = token_config(tmp_path, site)
+    assert run(config).returncode == 0
+    assert out_files(tmp_path) == TOKEN_FILES
+    site.token = "b2"
+    before = dict(site.counts)
+    result = run(config, "--start-url", demo_site.entry_url(site))
+    assert result.returncode == 0, result.stdout
+    assert out_files(tmp_path) == TOKEN_FILES  # no second copy with a suffix
+    statuses = [r["status"] for r in manifest_rows(tmp_path)][6:]
+    assert statuses == ["SKIP", "SKIP", "MISS", "SKIP", "SKIP", "SKIP"]
+    assert not any(path.startswith("/files/") for path in counts_since(site, before))
+
+
+def test_expired_file_link_reloads_page(tmp_path, site):
+    site.expire_once.add(2)
+    config = token_config(tmp_path, site)
+    result = run(config)
+    assert result.returncode == 0, result.stdout
+    assert "File response is HTML, not a file; the link is treated as expired." in result.stdout
+    assert "Loading the page again for a new file link" in result.stdout
+    assert "Link refreshes: 1" in result.stdout
+    assert out_files(tmp_path) == TOKEN_FILES
+    assert site.counts["/e2.html"] == 4  # two loads, each a browser visit and a source request
+
+
+def test_expired_file_link_fails_without_refresh(tmp_path, site):
+    site.expire_once.add(2)
+    config = token_config(tmp_path, site, max_link_refreshes=0, max_consecutive_failures=0)
+    result = run(config)
+    assert result.returncode == 0, result.stdout
+    assert "2.jpg" not in out_files(tmp_path)
+    assert [r["status"] for r in manifest_rows(tmp_path)][1] == "FAIL"
+
+
+def test_resume_after_expiry_walks_from_entry(tmp_path, site):
+    config = token_config(tmp_path, site)
+    assert run(config, "--max-pages", "2").returncode == 1
+    state = json.loads((tmp_path / "state.json").read_text())
+    assert state["page_number"] == 3 and "/e3.html?t=a1" in state["next_url"]
+    site.token = "b2"
+    before = dict(site.counts)
+    result = run(config, "--resume", "--start-url", demo_site.entry_url(site))
+    assert result.returncode == 0, result.stdout
+    assert "Saved URL has expired. Walking from the entry URL" in result.stdout
+    assert "[Page 1] Walk past" in result.stdout and "[Page 2] Walk past" in result.stdout
+    assert out_files(tmp_path) == TOKEN_FILES
+    since = counts_since(site, before)
+    assert since["/e1.html"] == 1 and since["/e2.html"] == 1  # source request only
+    assert "/files/n1" not in since and "/files/n2" not in since
+
+
+def test_resume_after_expiry_without_register_halts(tmp_path, site):
+    config = token_config(tmp_path, site, register_file=None)
+    assert run(config, "--max-pages", "2").returncode == 1
+    site.token = "b2"
+    result = run(config, "--resume")
+    assert result.returncode == 1
+    assert "Without register_file the crawler cannot walk" in result.stdout
+
+
+def test_catch_up_continues_after_furthest(tmp_path, site):
+    config = token_config(tmp_path, site)
+    assert run(config, "--max-pages", "3").returncode == 1
+    site.token = "b2"
+    before = dict(site.counts)
+    result = run(config, "--catch-up", "--start-url", demo_site.entry_url(site))
+    assert result.returncode == 0, result.stdout
+    assert "Walk plan: furthest position 3, 1 gaps." in result.stdout
+    assert out_files(tmp_path) == TOKEN_FILES
+    since = counts_since(site, before)
+    assert since["/e1.html"] == 1 and since["/e2.html"] == 1
+    assert since["/e3.html"] == 2  # position 3 has no file link, so it is a gap: full load
+    assert since["/e4.html"] == 2 and since["/e6.html"] == 2
+    assert json.loads((tmp_path / "state.json").read_text())["complete"] is True
+
+
+def test_fill_gaps_downloads_only_gaps_and_report(tmp_path, site):
+    site.broken.add(4)
+    config = token_config(tmp_path, site, max_consecutive_failures=0)
+    assert run(config).returncode == 0
+    assert out_files(tmp_path) == ["1.jpg", "2.jpg", "6.jpg", "7.jpg"]
+    report = run(config, "--gaps")
+    assert report.returncode == 0
+    assert "Furthest position: 6. Series complete: yes." in report.stdout
+    assert "position 3: nofile" in report.stdout and "position 4: failed" in report.stdout
+
+    site.broken.clear()
+    site.token = "b2"
+    before = dict(site.counts)
+    result = run(config, "--fill-gaps", "--start-url", demo_site.entry_url(site))
+    assert result.returncode == 0, result.stdout
+    assert "[Page 4] Last gap processed. Stopping." in result.stdout
+    assert out_files(tmp_path) == TOKEN_FILES
+    since = counts_since(site, before)
+    assert "/e5.html" not in since and "/e6.html" not in since
+    assert [path for path in since if path.startswith("/files/")] == ["/files/n4"]
+    assert json.loads((tmp_path / "state.json").read_text())["complete"] is True
+
+    report = run(config, "--gaps")
+    assert "position 4" not in report.stdout and "position 3: nofile" in report.stdout
+    assert "Numbers skipped by the site (between adjacent positions): 5" in report.stdout
+    assert "Numbers missing next to gap positions: 3" in report.stdout
+
+
+def test_fill_gaps_without_gaps_does_nothing(tmp_path, site):
+    config = token_config(tmp_path, site)
+    assert run(config, "--max-pages", "2").returncode == 1
+    before = dict(site.counts)
+    result = run(config, "--fill-gaps")
+    assert result.returncode == 0
+    assert "No gaps up to position 2. Nothing to do." in result.stdout
+    assert counts_since(site, before) == {}
+
+
+def test_fill_gaps_halts_when_series_changed(tmp_path, site):
+    site.broken.add(4)
+    config = token_config(tmp_path, site, max_consecutive_failures=0)
+    assert run(config).returncode == 0
+    site.broken.clear()
+    site.renumber[4] = 9
+    site.token = "b2"
+    result = run(config, "--fill-gaps", "--start-url", demo_site.entry_url(site))
+    assert result.returncode == 1, result.stdout
+    assert "The series appears changed: file number 9 at position 4 is not between 2 and 6" in result.stdout

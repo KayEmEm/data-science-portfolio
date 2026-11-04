@@ -6,6 +6,7 @@ layout matches the example patterns in config.yaml: a file link with the text
 "Download file" and a next page link with rel="next".
 """
 
+import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
@@ -53,6 +54,31 @@ PAGES = {
     "/elsewhere.html": "<html><body>other page</body></html>",
 }
 
+# Series with expiring links: pages /e1.html to /e6.html, valid only with the
+# current token (?t=...). File links carry the same token. Files are named by
+# Content-Disposition with an unpadded number. Position 3 has no file, and the
+# site skips number 5. server.token changes the token, which expires every
+# page and file link. server.broken lists file numbers that answer HTTP 500;
+# server.expire_once lists file numbers whose next request answers with an
+# "Invalid link" page; server.renumber maps a file number to another number.
+TOKEN_NUMBERS = {1: 1, 2: 2, 3: None, 4: 4, 5: 6, 6: 7}
+INVALID_LINK = b"<html><body>Invalid link</body></html>"
+
+
+def token_page(position, token):
+    last = len(TOKEN_NUMBERS)
+    following = position if position == last else position + 1
+    body = nav(f"e{following}.html?t={token}")
+    number = TOKEN_NUMBERS[position]
+    if number is not None:
+        body += "\n" + file_link(f"files/n{number}?t={token}")
+    return body.encode()
+
+
+def entry_url(server):
+    """Entry URL of the token series with the current token."""
+    return f"{server.base}/e1.html?t={server.token}"
+
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -71,6 +97,25 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(302, b"", "text/plain", {"Location": "/p4.html"})
         if url.path in PAGES:
             return self.reply(200, PAGES[url.path].encode(), "text/html")
+        token = parse_qs(url.query).get("t", [""])[0]
+        match = re.fullmatch(r"/e(\d+)\.html", url.path)
+        if match and int(match.group(1)) in TOKEN_NUMBERS:
+            if token != server.token:
+                return self.reply(200, INVALID_LINK, "text/html")
+            return self.reply(200, token_page(int(match.group(1)), token), "text/html")
+        match = re.fullmatch(r"/files/n(\d+)", url.path)
+        if match:
+            number = int(match.group(1))
+            with server.lock:
+                expire_now = number in server.expire_once
+                server.expire_once.discard(number)
+            if token != server.token or expire_now:
+                return self.reply(200, INVALID_LINK, "text/html")
+            if number in server.broken:
+                return self.reply(500, b"", "text/plain")
+            name = f"{server.renumber.get(number, number)}.jpg"
+            disposition = {"Content-Disposition": f'attachment; filename="{name}"'}
+            return self.reply(200, b"FILEDATA" + name.encode(), "image/jpeg", disposition)
         if not url.path.startswith("/files/"):
             return self.reply(404, b"", "text/plain")
 
@@ -114,6 +159,10 @@ def start():
     server.requests = []
     server.user_agents = []
     server.counts = {}
+    server.token = "a1"
+    server.broken = set()
+    server.expire_once = set()
+    server.renumber = {}
     server.base = f"http://127.0.0.1:{server.server_address[1]}"
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
