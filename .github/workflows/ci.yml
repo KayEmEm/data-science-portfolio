@@ -92,7 +92,7 @@ jobs:
               - 'projects/p13_adversarial_robustness/**'
               - '.github/workflows/**'
             p14:
-              - 'projects/p14_linear_crawler/**'
+              - 'projects/p14_rail_crawler/**'
               - '.github/workflows/**'
 
   common:
@@ -389,13 +389,13 @@ jobs:
       - name: Smoke run of the full pipeline on synthetic sources and an untrained detector (no data download)
         run: make smoke
 
-  p14_linear_crawler:
+  p14_rail_crawler:
     needs: changes
     if: needs.changes.outputs.p14 == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: projects/p14_linear_crawler
+        working-directory: projects/p14_rail_crawler
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

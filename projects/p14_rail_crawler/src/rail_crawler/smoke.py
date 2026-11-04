@@ -2,7 +2,7 @@
 Smoke run: crawls the synthetic series of demo_site in headless mode and checks
 the result. No real site is contacted.
 
-Usage: python -m linear_crawler.smoke [output folder]   (default artifacts/smoke)
+Usage: python -m rail_crawler.smoke [output folder]   (default artifacts/smoke)
 """
 
 import csv
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from linear_crawler import crawler, demo_site
+from rail_crawler import crawler, demo_site
 
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"

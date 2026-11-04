@@ -1,8 +1,8 @@
 """
-Tests for linear_crawler.
+Tests for rail_crawler.
 
 Unit tests cover the helper functions. Integration tests run the crawler as a
-subprocess against the synthetic site of linear_crawler.demo_site on 127.0.0.1
+subprocess against the synthetic site of rail_crawler.demo_site on 127.0.0.1
 with headless Chromium.
 
 Run from the project folder:  make test
@@ -26,10 +26,10 @@ from email.utils import format_datetime
 import pytest
 import yaml
 
-from linear_crawler import crawler, demo_site
-from linear_crawler.demo_site import FILE_PATTERN, NEXT_PATTERN
+from rail_crawler import crawler, demo_site
+from rail_crawler.demo_site import FILE_PATTERN, NEXT_PATTERN
 
-COMMAND = [sys.executable, "-m", "linear_crawler"]
+COMMAND = [sys.executable, "-m", "rail_crawler"]
 LINUX_UA = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
 )
@@ -488,7 +488,7 @@ def run_in_terminal(config, actions, timeout=120):
     terminal settings afterwards. actions: list of (text, count, bytes): when
     text has appeared count times in the output, bytes are typed.
     """
-    command = f"{sys.executable} -m linear_crawler {config}; echo EXIT=$?; stty -a"
+    command = f"{sys.executable} -m rail_crawler {config}; echo EXIT=$?; stty -a"
     pid, master = pty.fork()
     if pid == 0:
         os.execv("/bin/sh", ["/bin/sh", "-c", command])

@@ -17,7 +17,7 @@ Fourteen projects, one per task type. Projects 1 to 13 each solve one concrete p
 | 11 | [Illicit transactions in a payment network](projects/p11_illicit_transactions) | Graph analytics | complete | Elliptic test illicit F1 0.799 with LightGBM on transaction features (GraphSAGE 0.697, GCN 0.458, baseline 0.428); every model drops to F1 0.03 or less after the dark market shutdown; illicit transactions cluster in Louvain communities |
 | 12 | [Inventory control](projects/p12_inventory_control) | Reinforcement learning | complete | M5 store CA_1, three products (sample run): tuned (s, S) costs least for all three; PPO costs 12 to 19% more and SAC 12 to 50% more; (s, S) is 3.6% above the exact optimum on the slow product with a fixed lead time |
 | 13 | [Adversarial robustness](projects/p13_adversarial_robustness) | Adversarial ML (cross cutting) | complete | sample run: a borrowed payment of up to 10% of the limit plus free self reported fields turns 24% of credit rejections into approvals (6% with two defenses); a changed packet TTL, padding and delays evade 92% of LightGBM flow detections (3% after adversarial training); PGD at 2/255 brings detector mAP50 from 0.50 to 0.00 |
-| 14 | [Rail crawler](projects/p14_linear_crawler) | Web automation and data acquisition | complete | follows a page series to its last page with Playwright; 60 tests on a synthetic site cover retries with Retry-After, expired sessions and links, browser crashes, pages that navigate by themselves, resume, gap filling and stop keys |
+| 14 | [Rail crawler](projects/p14_rail_crawler) | Web automation and data acquisition | complete | follows a page series to its last page with Playwright; 60 tests on a synthetic site cover retries with Retry-After, expired sessions and links, browser crashes, pages that navigate by themselves, resume, gap filling and stop keys |
 
 ## Shared conventions
 
@@ -49,7 +49,7 @@ projects/
   p11_illicit_transactions/
   p12_inventory_control/
   p13_adversarial_robustness/  AGPL-3.0, because it uses Ultralytics YOLO
-  p14_linear_crawler/   no dataset; tested on a synthetic site
+  p14_rail_crawler/   no dataset; tested on a synthetic site
 colab/                  notebook, runner and profiles for Google Colab
 .github/workflows/      one CI workflow
 ```
