@@ -1,4 +1,4 @@
-# Project 14: linear crawler. Run from this folder.
+# Project 14: rail crawler. Run from this folder.
 # CONFIG selects the settings file; ARGS passes extra options, for example ARGS="--max-pages 3".
 PYTHON ?= python
 CONFIG ?= config.yaml
