@@ -1,8 +1,8 @@
 """
-Tests for rail_crawler.
+Tests for rail_spider.
 
 Unit tests cover the helper functions. Integration tests run the crawler as a
-subprocess against the synthetic site of rail_crawler.demo_site on 127.0.0.1
+subprocess against the synthetic site of rail_spider.demo_site on 127.0.0.1
 with headless Chromium.
 
 Run from the project folder:  make test
@@ -26,10 +26,10 @@ from email.utils import format_datetime
 import pytest
 import yaml
 
-from rail_crawler import crawler, demo_site
-from rail_crawler.demo_site import FILE_PATTERN, NEXT_PATTERN
+from rail_spider import demo_site, spider
+from rail_spider.demo_site import FILE_PATTERN, NEXT_PATTERN
 
-COMMAND = [sys.executable, "-m", "rail_crawler"]
+COMMAND = [sys.executable, "-m", "rail_spider"]
 LINUX_UA = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
 )
@@ -48,7 +48,7 @@ def test_cookie_parser_columns_httponly_and_session(tmp_path):
         "broken line\n",
         encoding="utf-8",
     )
-    cookies, skipped = crawler.load_netscape_cookies(str(path))
+    cookies, skipped = spider.load_netscape_cookies(str(path))
     assert skipped == 1
     by_name = {c["name"]: c for c in cookies}
     assert by_name["sess"] == {
@@ -67,81 +67,81 @@ def test_cookie_parser_columns_httponly_and_session(tmp_path):
 
 
 def test_extract_file_link_unescapes_and_resolves():
-    pattern = crawler.compile_pattern(FILE_PATTERN, "f")
+    pattern = spider.compile_pattern(FILE_PATTERN, "f")
     source = '<a class="file" href="files/a.jpg?x=1&amp;y=2" title="x">Download file</a>'
-    assert crawler.extract_urls(pattern, source, "https://h.test/s/p1.html") == [
+    assert spider.extract_urls(pattern, source, "https://h.test/s/p1.html") == [
         "https://h.test/s/files/a.jpg?x=1&y=2"
     ]
 
 
 def test_next_pattern_skips_links_without_rel_next():
-    pattern = crawler.compile_pattern(NEXT_PATTERN, "n")
+    pattern = spider.compile_pattern(NEXT_PATTERN, "n")
     source = '<a href="/home">Home</a> <a href="/b" class="x" rel="next">Next</a>'
-    assert crawler.extract_urls(pattern, source, "https://h.test/") == ["https://h.test/b"]
+    assert spider.extract_urls(pattern, source, "https://h.test/") == ["https://h.test/b"]
 
 
 def test_patterns_apply_line_by_line():
     """Patterns run with re.MULTILINE: ^ matches at the start of each line."""
-    pattern = crawler.compile_pattern(r'^<a href="([^"]*)"', "n")
-    assert crawler.extract_urls(pattern, 'x\n<a href="/c">', "https://h.test/") == ["https://h.test/c"]
-    assert crawler.extract_urls(pattern, 'x <a href="/c">', "https://h.test/") == []
+    pattern = spider.compile_pattern(r'^<a href="([^"]*)"', "n")
+    assert spider.extract_urls(pattern, 'x\n<a href="/c">', "https://h.test/") == ["https://h.test/c"]
+    assert spider.extract_urls(pattern, 'x <a href="/c">', "https://h.test/") == []
 
 
 def test_choose_filename():
     cd = "attachment; filename*=UTF-8''r%C3%A9sum%C3%A9.jpg"
-    assert crawler.choose_filename(cd, "https://h/x", 1) == "résumé.jpg"
-    assert crawler.choose_filename(None, "https://h/a/b%20c.png?q=1", 1) == "b c.png"
-    assert crawler.choose_filename('attachment; filename="../../etc/x"', "https://h/", 1) == "x"
-    assert crawler.choose_filename(None, "https://h/", 7) == "page_00007.bin"
+    assert spider.choose_filename(cd, "https://h/x", 1) == "résumé.jpg"
+    assert spider.choose_filename(None, "https://h/a/b%20c.png?q=1", 1) == "b c.png"
+    assert spider.choose_filename('attachment; filename="../../etc/x"', "https://h/", 1) == "x"
+    assert spider.choose_filename(None, "https://h/", 7) == "page_00007.bin"
 
 
 def test_unique_path(tmp_path):
     (tmp_path / "a.jpg").write_bytes(b"1")
     (tmp_path / "a_1.jpg").write_bytes(b"1")
-    assert crawler.unique_path(str(tmp_path), "a.jpg") == str(tmp_path / "a_2.jpg")
+    assert spider.unique_path(str(tmp_path), "a.jpg") == str(tmp_path / "a_2.jpg")
 
 
 def test_normalize_url():
-    assert crawler.normalize_url("HTTPS://Host.Test/p.html?a=1#top") == "https://host.test/p.html?a=1"
-    assert crawler.normalize_url("https://h.test") == "https://h.test/"
+    assert spider.normalize_url("HTTPS://Host.Test/p.html?a=1#top") == "https://host.test/p.html?a=1"
+    assert spider.normalize_url("https://h.test") == "https://h.test/"
 
 
 def test_parse_retry_after():
-    assert crawler.parse_retry_after("120") == 120.0
+    assert spider.parse_retry_after("120") == 120.0
     later = datetime.now(UTC) + timedelta(seconds=60)
-    assert 50 <= crawler.parse_retry_after(format_datetime(later, usegmt=True)) <= 61
-    assert crawler.parse_retry_after("garbage") is None
-    assert crawler.parse_retry_after(None) is None
+    assert 50 <= spider.parse_retry_after(format_datetime(later, usegmt=True)) <= 61
+    assert spider.parse_retry_after("garbage") is None
+    assert spider.parse_retry_after(None) is None
 
 
 def test_backoff_delay_doubles_and_caps():
     for _ in range(50):
-        assert 8 <= crawler.backoff_delay(1, 10, 100) <= 10
-        assert 16 <= crawler.backoff_delay(2, 10, 100) <= 20
-        assert 80 <= crawler.backoff_delay(9, 10, 100) <= 100
+        assert 8 <= spider.backoff_delay(1, 10, 100) <= 10
+        assert 16 <= spider.backoff_delay(2, 10, 100) <= 20
+        assert 80 <= spider.backoff_delay(9, 10, 100) <= 100
 
 
 def test_length_mismatch():
-    assert crawler.length_mismatch({"content-length": "10"}, 10) is None
-    assert crawler.length_mismatch({"content-length": "10"}, 7) == 10
-    assert crawler.length_mismatch({"content-length": "10", "content-encoding": "gzip"}, 7) is None
-    assert crawler.length_mismatch({}, 7) is None
+    assert spider.length_mismatch({"content-length": "10"}, 10) is None
+    assert spider.length_mismatch({"content-length": "10"}, 7) == 10
+    assert spider.length_mismatch({"content-length": "10", "content-encoding": "gzip"}, 7) is None
+    assert spider.length_mismatch({}, 7) is None
 
 
 def test_content_type():
-    assert crawler.content_type("text/HTML; charset=utf-8") == "text/html"
-    assert crawler.content_type("image/jpeg") == "image/jpeg"
-    assert crawler.content_type(None) == ""
+    assert spider.content_type("text/HTML; charset=utf-8") == "text/html"
+    assert spider.content_type("image/jpeg") == "image/jpeg"
+    assert spider.content_type(None) == ""
 
 
 def test_manifest_round_trip(tmp_path):
     path = str(tmp_path / "m.csv")
     (tmp_path / "a.jpg").write_bytes(b"1")
-    m = crawler.Manifest(path)
-    m.record(crawler.ROW_SAVE, 1, "p1", "f1", "a.jpg", 1, "h")
-    m.record(crawler.ROW_SAVE, 2, "p2", "f2", "gone.jpg", 1, "h")
-    m.record(crawler.ROW_MISS, 3, "p3")
-    again = crawler.Manifest(path)
+    m = spider.Manifest(path)
+    m.record(spider.ROW_SAVE, 1, "p1", "f1", "a.jpg", 1, "h")
+    m.record(spider.ROW_SAVE, 2, "p2", "f2", "gone.jpg", 1, "h")
+    m.record(spider.ROW_MISS, 3, "p3")
+    again = spider.Manifest(path)
     assert again.already_saved("f1", str(tmp_path)) == "a.jpg"
     assert again.already_saved("f2", str(tmp_path)) is None
     with open(path, newline="", encoding="utf-8") as f:
@@ -151,7 +151,7 @@ def test_manifest_round_trip(tmp_path):
 def test_build_cookie_jar_sends_cookies():
     import urllib.request
 
-    jar = crawler.build_cookie_jar(
+    jar = spider.build_cookie_jar(
         [
             {
                 "name": "a",
@@ -330,7 +330,7 @@ def test_max_pages_then_resume(tmp_path, site):
 def test_lock_blocks_second_run(tmp_path, site):
     config = make_config(tmp_path, site, "/p1.html")
     os.makedirs(tmp_path / "out")
-    with open(tmp_path / "out" / ".crawler.lock", "a+") as handle:
+    with open(tmp_path / "out" / ".spider.lock", "a+") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         assert run(config).returncode == 3
 
@@ -377,7 +377,7 @@ def test_cookie_expiry_warning(tmp_path, site):
 def test_browser_lost_restart(tmp_path, site, monkeypatch, close_every_time):
     """Closes the browser before a page load to simulate a crash."""
     config = make_config(tmp_path, site, "/p4.html", max_browser_restarts=1)
-    original = crawler.Crawler.load_page
+    original = spider.Spider.load_page
     calls = {"n": 0}
 
     def closing_load_page(self, url):
@@ -386,8 +386,8 @@ def test_browser_lost_restart(tmp_path, site, monkeypatch, close_every_time):
             self.browser.close()
         return original(self, url)
 
-    monkeypatch.setattr(crawler.Crawler, "load_page", closing_load_page)
-    code = crawler.main([config])
+    monkeypatch.setattr(spider.Spider, "load_page", closing_load_page)
+    code = spider.main([config])
     log_text = (tmp_path / "log" / "crawl.log").read_text(encoding="utf-8")
     assert "Restart 1/1" in log_text
     if close_every_time:
@@ -399,9 +399,9 @@ def test_browser_lost_restart(tmp_path, site, monkeypatch, close_every_time):
 
 
 def test_redirect_changes_path():
-    assert crawler.redirect_changes_path("https://h/a.html", "https://h/login")
-    assert not crawler.redirect_changes_path("http://h/a.html?x=1", "https://www.h/a.html")
-    assert not crawler.redirect_changes_path("https://h", "https://h/")
+    assert spider.redirect_changes_path("https://h/a.html", "https://h/login")
+    assert not spider.redirect_changes_path("http://h/a.html?x=1", "https://www.h/a.html")
+    assert not spider.redirect_changes_path("https://h", "https://h/")
 
 
 def test_redirect_to_other_path_halts(tmp_path, site):
@@ -486,9 +486,12 @@ def run_in_terminal(config, actions, timeout=120):
     """
     Runs the script on a pseudo terminal, followed by "stty -a" to show the
     terminal settings afterwards. actions: list of (text, count, bytes): when
-    text has appeared count times in the output, bytes are typed.
+    text has appeared count times in the output, bytes are typed. The shell
+    traps SIGINT, so a typed Ctrl+C does not end the shell (and hang up the
+    terminal) before the script has written its summary; the script itself
+    still gets the default SIGINT handling.
     """
-    command = f"{sys.executable} -m rail_crawler {config}; echo EXIT=$?; stty -a"
+    command = f"trap : INT; {sys.executable} -m rail_spider {config}; echo EXIT=$?; stty -a"
     pid, master = pty.fork()
     if pid == 0:
         os.execv("/bin/sh", ["/bin/sh", "-c", command])
@@ -555,6 +558,7 @@ def test_ctrl_c_still_works_in_cbreak_mode(tmp_path, site):
     config = make_config(tmp_path, site, "/p1.html", min_page_delay=3, max_page_delay=3)
     output = run_in_terminal(config, [("Page delay", 1, b"\x03")])
     assert "Manual interruption (SIGINT)" in output, output
+    assert "EXIT=130" in output, output
     assert "Pages processed: 1" in output
 
 
@@ -566,24 +570,24 @@ NUMBER_PATTERN = r"^(\d+)\.jpg$"
 
 
 def test_register_gaps_plan_and_numbers(tmp_path):
-    number_re = crawler.compile_pattern(NUMBER_PATTERN, "n", group_of="the file number")
+    number_re = spider.compile_pattern(NUMBER_PATTERN, "n", group_of="the file number")
     path = str(tmp_path / "register.csv")
-    register = crawler.Register(path, number_re)
+    register = spider.Register(path, number_re)
     (tmp_path / "MAIN").mkdir()
     for name in ("1.jpg", "2.jpg", "6.jpg", "7.jpg"):
         (tmp_path / "MAIN" / name).write_bytes(b"1")
-    main, side = crawler.STREAM_MAIN, crawler.STREAM_SIDE
-    register.set(1, main, crawler.ROW_SAVE, "MAIN/1.jpg")
-    register.set(2, main, crawler.ROW_SAVE, "MAIN/2.jpg")
-    register.set(3, main, crawler.ROW_MISS)
-    register.set(5, main, crawler.ROW_SAVE, "MAIN/6.jpg")
-    register.set(6, main, crawler.ROW_SAVE, "MAIN/7.jpg")
-    register.set(7, main, crawler.ROW_FAIL)
-    register.set(8, main, crawler.ROW_SAVE, "MAIN/9.jpg")  # file deleted from disk
+    main, side = spider.STREAM_MAIN, spider.STREAM_SIDE
+    register.set(1, main, spider.ROW_SAVE, "MAIN/1.jpg")
+    register.set(2, main, spider.ROW_SAVE, "MAIN/2.jpg")
+    register.set(3, main, spider.ROW_MISS)
+    register.set(5, main, spider.ROW_SAVE, "MAIN/6.jpg")
+    register.set(6, main, spider.ROW_SAVE, "MAIN/7.jpg")
+    register.set(7, main, spider.ROW_FAIL)
+    register.set(8, main, spider.ROW_SAVE, "MAIN/9.jpg")  # file deleted from disk
     for position in (1, 2, 3, 5, 6, 7, 8):
-        register.set(position, side, crawler.ROW_MISS)
-    register.set(6, side, crawler.ROW_FAIL)
-    again = crawler.Register(path, number_re)
+        register.set(position, side, spider.ROW_MISS)
+    register.set(6, side, spider.ROW_FAIL)
+    again = spider.Register(path, number_re)
     assert again.gaps(str(tmp_path)) == {
         3: "MAIN nofile",
         4: "MAIN unseen",
@@ -591,7 +595,7 @@ def test_register_gaps_plan_and_numbers(tmp_path):
         8: "MAIN nodisk",
     }
     # With both streams: a SIDE failure is a gap, a missing SIDE link is not.
-    both = again.gaps(str(tmp_path), crawler.STREAMS)
+    both = again.gaps(str(tmp_path), spider.STREAMS)
     assert both[6] == "SIDE failed" and both[7] == "MAIN failed" and 2 not in both
     plan = again.plan(str(tmp_path), stop_at_last_gap=True)
     assert plan.furthest == 8 and plan.stop_after == 8
@@ -609,17 +613,17 @@ def test_register_without_stream_column_reads_as_main(tmp_path):
         encoding="utf-8",
     )
     (tmp_path / "1.jpg").write_bytes(b"1")
-    register = crawler.Register(str(path))
-    assert register.saved_name(1, crawler.STREAM_MAIN, str(tmp_path)) == "1.jpg"
+    register = spider.Register(str(path))
+    assert register.saved_name(1, spider.STREAM_MAIN, str(tmp_path)) == "1.jpg"
 
 
 def test_number_report_site_skip_and_disorder(tmp_path):
-    number_re = crawler.compile_pattern(NUMBER_PATTERN, "n", group_of="the file number")
-    register = crawler.Register(None, number_re)
-    main = crawler.STREAM_MAIN
-    register.set(1, main, crawler.ROW_SAVE, "MAIN/1.jpg")
-    register.set(2, main, crawler.ROW_SAVE, "MAIN/3.jpg")
-    register.set(3, main, crawler.ROW_SAVE, "MAIN/2.jpg")
+    number_re = spider.compile_pattern(NUMBER_PATTERN, "n", group_of="the file number")
+    register = spider.Register(None, number_re)
+    main = spider.STREAM_MAIN
+    register.set(1, main, spider.ROW_SAVE, "MAIN/1.jpg")
+    register.set(2, main, spider.ROW_SAVE, "MAIN/3.jpg")
+    register.set(3, main, spider.ROW_SAVE, "MAIN/2.jpg")
     assert register.number_report(main) == ([2], [], [3])
 
 

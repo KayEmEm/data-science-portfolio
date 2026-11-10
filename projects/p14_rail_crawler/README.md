@@ -4,7 +4,7 @@ Follow a series of web pages in which each page links to one file and to the nex
 
 ## Headline result
 
-**On a synthetic series, the crawler saves every file, recovers from the failures that stop simple download scripts, and halts with a clear reason when it cannot continue. 64 tests cover these cases; `make smoke` runs the full crawl in about 2 seconds.** The tests run the crawler as a separate process against [`demo_site.py`](src/rail_crawler/demo_site.py), a local site on 127.0.0.1 that produces each situation on purpose.
+**On a synthetic series, the crawler saves every file, recovers from the failures that stop simple download scripts, and halts with a clear reason when it cannot continue. 64 tests cover these cases; `make smoke` runs the full crawl in about 2 seconds.** The tests run the crawler as a separate process against [`demo_site.py`](src/rail_spider/demo_site.py), a local site on 127.0.0.1 that produces each situation on purpose.
 
 | Situation | Behavior | Test |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ Follow a series of web pages in which each page links to one file and to the nex
 
 ## Data and license
 
-This project has no dataset. It collects files from a site that the person running it can open in their own browser. Whoever runs it is responsible for the site's terms of use and for a request rate the site accepts; the default delays (10 to 25 seconds between pages) are set for that purpose. The repository contains no real site, URL, cookie or link pattern: the tests and the smoke run use only the synthetic site, and the patterns in `config.yaml` are examples that match it.
+This project has no dataset. It collects files from a site that the person running it can open in their own browser. Whoever runs it is responsible for the site's terms of use and for a request rate the site accepts; the default delays (10 to 25 seconds between pages) are set for that purpose. The repository contains no real site, URL, cookie or link pattern: the tests and the smoke run use only the synthetic site, and the patterns in `cobweb.yaml` are examples that match it.
 
 Code: MIT, as the rest of the repository.
 
@@ -37,7 +37,7 @@ Code: MIT, as the rest of the repository.
 
 1. **Page visit.** Chromium opens the page, so that the page scripts run and the cookies stay current. Stylesheets, images, fonts and media can be blocked (`block_subresources`), because only the HTML is used.
 2. **Page source.** The raw HTML comes from a second, direct request with the browser cookies. The source of the browser response is not used: Chromium discards it when a page navigates away by itself right after loading, and reading it can then fail or hang.
-3. **Links.** Regular expressions from `config.yaml` find the file links and the next page link in the raw HTML, line by line (`re.MULTILINE`), with the URL in capture group 1. HTML entities are decoded and relative URLs resolved. The first match is used, and more than one match is logged. There are two file streams: `main_file_link_pattern` finds the MAIN file and `side_file_link_pattern` (optional) the SIDE file. Both are downloaded when present, independently of each other.
+3. **Links.** Regular expressions from `cobweb.yaml` find the file links and the next page link in the raw HTML, line by line (`re.MULTILINE`), with the URL in capture group 1. HTML entities are decoded and relative URLs resolved. The first match is used, and more than one match is logged. There are two file streams: `main_file_link_pattern` finds the MAIN file and `side_file_link_pattern` (optional) the SIDE file. Both are downloaded when present, independently of each other.
 4. **File.** The file is fetched with the browser cookies, by Playwright's HTTP client or, with `stream_downloads`, streamed to disk by the standard library. The file name comes from `Content-Disposition` or the URL; an existing name gets a suffix (`one_1.jpg`). Files go to `download_dir/MAIN` or `download_dir/SIDE`; the crawler creates both folders. Each file is written to a temporary name first, then renamed, and recorded in `manifest.csv` with its size and SHA256 hash.
 5. **Next page.** The crawl stops when the next link points to the current page (end of series), to an earlier page (cycle), or is missing, or when a limit is reached (`max_pages`, consecutive failures, browser restarts).
 6. **Failures.** Each page load and download has up to `max_download_retries` retries. The wait doubles from `min_firewall_sleep` up to `max_firewall_sleep`, with random variation, unless the server sends `Retry-After`. HTTP 403, 429 and 503 are logged as possible blocks.
@@ -68,7 +68,7 @@ make test           # 64 tests
 To crawl a real series:
 
 1. Export the cookies of the logged in browser in Netscape format to `data/raw/cookies.txt` (the `data/` folder is never committed).
-2. In `config.yaml`, set `start_url`, the two link patterns, and `user_agent`: the "User agent" line from `chrome://version` in the Chrome browser that exported the cookies. The crawler refuses to start without it.
+2. In `cobweb.yaml`, set `start_url`, the two link patterns, and `user_agent`: the "User agent" line from `chrome://version` in the Chrome browser that exported the cookies. The crawler refuses to start without it.
 3. `make dry-run ARGS="--max-pages 3"` shows the links the patterns find; `make crawl` starts the crawl and `make resume` continues an interrupted one.
 4. If the links expire: `make catch-up ARGS="--start-url NEW_ENTRY_URL"` walks past the saved positions and continues, `make fill-gaps ARGS="--start-url NEW_ENTRY_URL"` fills only the gaps, and `make gaps` lists them.
 
@@ -76,7 +76,7 @@ Several series can run at the same time, each with its own config file, if each 
 
 ## Settings
 
-All settings are in [`config.yaml`](config.yaml).
+All settings are in [`cobweb.yaml`](cobweb.yaml).
 
 | Group | Keys |
 | --- | --- |
@@ -88,7 +88,7 @@ All settings are in [`config.yaml`](config.yaml).
 | Records | `manifest_file`, `state_file`, `register_file`, `debug_dir`, `crawl_log`, `console_level`, `log_max_bytes`, `log_backups` |
 | Control | `escape_key_stop` |
 
-Command line: `python -m rail_crawler <config> [--start-url URL] [--resume | --catch-up | --fill-gaps | --gaps] [--max-pages N] [--dry-run]`.
+Command line: `python -m rail_spider <config> [--start-url URL] [--resume | --catch-up | --fill-gaps | --gaps] [--max-pages N] [--dry-run]`.
 
 | Exit code | Meaning |
 | ---: | --- |
@@ -103,7 +103,7 @@ Command line: `python -m rail_crawler <config> [--start-url URL] [--resume | --c
 ## Departures from the shared conventions
 
 * **No dataset, model or metric.** The Makefile has `crawl`, `resume`, `dry-run` and `smoke` targets instead of `data`, `train` and `evaluate`, and there is no MLflow tracking or baseline. `sample` runs the smoke crawl, so that the Colab profiles can run this project like the others; `SAMPLE` has no effect.
-* **Own settings loader.** `config.yaml` is read by the crawler itself, not by `portfolio_common.config`: `--print-config` and `PORTFOLIO_CONFIG` are not supported, and relative paths are relative to the folder the crawler starts from. The Makefile targets run from this folder.
+* **Own settings loader.** `cobweb.yaml` is read by the crawler itself, not by `portfolio_common.config`: `--print-config` and `PORTFOLIO_CONFIG` are not supported, and relative paths are relative to the folder the crawler starts from. The Makefile targets run from this folder.
 * **Linux.** The crawler imports `fcntl` and `termios` for the folder lock and the Escape key, so it needs Linux or macOS, and the `virtual` display mode needs Xvfb. It is tested on Linux only.
 
 ## Limits

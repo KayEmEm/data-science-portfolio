@@ -2,7 +2,7 @@
 Synthetic page series on 127.0.0.1 for the tests and the smoke run.
 
 Every page and file is generated here; no real site is involved. The page
-layout matches the example patterns in config.yaml: a file link with the text
+layout matches the example patterns in cobweb.yaml: a file link with the text
 "Download file" and a next page link with rel="next".
 """
 
