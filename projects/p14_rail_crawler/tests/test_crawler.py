@@ -225,8 +225,8 @@ def manifest_rows(tmp_path):
         return list(csv.DictReader(f))
 
 
-def out_files(tmp_path):
-    return sorted(n for n in os.listdir(tmp_path / "out") if not n.startswith("."))
+def out_files(tmp_path, stream="MAIN"):
+    return sorted(n for n in os.listdir(tmp_path / "out" / stream) if not n.startswith("."))
 
 
 # ==============================================================================
@@ -238,7 +238,7 @@ def test_full_series_then_rerun_skips(tmp_path, site, stream):
     result = run(config)
     assert result.returncode == 0, result.stdout + result.stderr
     assert out_files(tmp_path) == ["one.jpg", "one_1.jpg", "résumé.jpg"]
-    assert (tmp_path / "out" / "résumé.jpg").read_bytes() == b"FILEDATA/files/cd"
+    assert (tmp_path / "out" / "MAIN" / "résumé.jpg").read_bytes() == b"FILEDATA/files/cd"
     assert [r["status"] for r in manifest_rows(tmp_path)] == ["SAVE", "MISS", "SAVE", "SAVE"]
     assert json.loads((tmp_path / "state.json").read_text())["complete"] is True
     assert (tmp_path / "debug" / "page_00002_nofile.html").is_file()
@@ -569,37 +569,58 @@ def test_register_gaps_plan_and_numbers(tmp_path):
     number_re = crawler.compile_pattern(NUMBER_PATTERN, "n", group_of="the file number")
     path = str(tmp_path / "register.csv")
     register = crawler.Register(path, number_re)
+    (tmp_path / "MAIN").mkdir()
     for name in ("1.jpg", "2.jpg", "6.jpg", "7.jpg"):
-        (tmp_path / name).write_bytes(b"1")
-    register.set(1, crawler.ROW_SAVE, "1.jpg")
-    register.set(2, crawler.ROW_SAVE, "2.jpg")
-    register.set(3, crawler.ROW_MISS)
-    register.set(5, crawler.ROW_SAVE, "6.jpg")
-    register.set(6, crawler.ROW_SAVE, "7.jpg")
-    register.set(7, crawler.ROW_FAIL)
-    register.set(8, crawler.ROW_SAVE, "9.jpg")  # file deleted from disk
+        (tmp_path / "MAIN" / name).write_bytes(b"1")
+    main, side = crawler.STREAM_MAIN, crawler.STREAM_SIDE
+    register.set(1, main, crawler.ROW_SAVE, "MAIN/1.jpg")
+    register.set(2, main, crawler.ROW_SAVE, "MAIN/2.jpg")
+    register.set(3, main, crawler.ROW_MISS)
+    register.set(5, main, crawler.ROW_SAVE, "MAIN/6.jpg")
+    register.set(6, main, crawler.ROW_SAVE, "MAIN/7.jpg")
+    register.set(7, main, crawler.ROW_FAIL)
+    register.set(8, main, crawler.ROW_SAVE, "MAIN/9.jpg")  # file deleted from disk
+    for position in (1, 2, 3, 5, 6, 7, 8):
+        register.set(position, side, crawler.ROW_MISS)
+    register.set(6, side, crawler.ROW_FAIL)
     again = crawler.Register(path, number_re)
     assert again.gaps(str(tmp_path)) == {
-        3: crawler.GAP_NOFILE,
-        4: crawler.GAP_UNSEEN,
-        7: crawler.GAP_FAILED,
-        8: crawler.GAP_NODISK,
+        3: "MAIN nofile",
+        4: "MAIN unseen",
+        7: "MAIN failed",
+        8: "MAIN nodisk",
     }
+    # With both streams: a SIDE failure is a gap, a missing SIDE link is not.
+    both = again.gaps(str(tmp_path), crawler.STREAMS)
+    assert both[6] == "SIDE failed" and both[7] == "MAIN failed" and 2 not in both
     plan = again.plan(str(tmp_path), stop_at_last_gap=True)
     assert plan.furthest == 8 and plan.stop_after == 8
     assert plan.is_done(1) and not plan.is_done(3) and not plan.is_done(9)
     # 3, 4 and 5 lie across gap positions 3 and 4; 8 lies across gap position 7.
-    assert again.number_report() == ([], [3, 4, 5, 8], [])
-    assert again.neighbour_numbers(4) == (2, 6)
+    assert again.number_report(main) == ([], [3, 4, 5, 8], [])
+    assert again.neighbour_numbers(4, main) == (2, 6)
+    assert again.number_report(side) == ([], [], [])
+
+
+def test_register_without_stream_column_reads_as_main(tmp_path):
+    path = tmp_path / "register.csv"
+    path.write_text(
+        "position,status,saved_name,file_number,size,sha256,updated\n1,SAVE,1.jpg,1,1,h,2026-01-01T00:00:00\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "1.jpg").write_bytes(b"1")
+    register = crawler.Register(str(path))
+    assert register.saved_name(1, crawler.STREAM_MAIN, str(tmp_path)) == "1.jpg"
 
 
 def test_number_report_site_skip_and_disorder(tmp_path):
     number_re = crawler.compile_pattern(NUMBER_PATTERN, "n", group_of="the file number")
     register = crawler.Register(None, number_re)
-    register.set(1, crawler.ROW_SAVE, "1.jpg")
-    register.set(2, crawler.ROW_SAVE, "3.jpg")
-    register.set(3, crawler.ROW_SAVE, "2.jpg")
-    assert register.number_report() == ([2], [], [3])
+    main = crawler.STREAM_MAIN
+    register.set(1, main, crawler.ROW_SAVE, "MAIN/1.jpg")
+    register.set(2, main, crawler.ROW_SAVE, "MAIN/3.jpg")
+    register.set(3, main, crawler.ROW_SAVE, "MAIN/2.jpg")
+    assert register.number_report(main) == ([2], [], [3])
 
 
 def test_walk_modes_need_register(tmp_path, site):
@@ -711,7 +732,7 @@ def test_fill_gaps_downloads_only_gaps_and_report(tmp_path, site):
     report = run(config, "--gaps")
     assert report.returncode == 0
     assert "Furthest position: 6. Series complete: yes." in report.stdout
-    assert "position 3: nofile" in report.stdout and "position 4: failed" in report.stdout
+    assert "position 3: MAIN nofile" in report.stdout and "position 4: MAIN failed" in report.stdout
 
     site.broken.clear()
     site.token = "b2"
@@ -726,9 +747,9 @@ def test_fill_gaps_downloads_only_gaps_and_report(tmp_path, site):
     assert json.loads((tmp_path / "state.json").read_text())["complete"] is True
 
     report = run(config, "--gaps")
-    assert "position 4" not in report.stdout and "position 3: nofile" in report.stdout
-    assert "Numbers skipped by the site (between adjacent positions): 5" in report.stdout
-    assert "Numbers missing next to gap positions: 3" in report.stdout
+    assert "position 4" not in report.stdout and "position 3: MAIN nofile" in report.stdout
+    assert "MAIN numbers skipped by the site: 5" in report.stdout
+    assert "MAIN numbers missing across other positions: 3" in report.stdout
 
 
 def test_fill_gaps_without_gaps_does_nothing(tmp_path, site):
@@ -750,4 +771,61 @@ def test_fill_gaps_halts_when_series_changed(tmp_path, site):
     site.token = "b2"
     result = run(config, "--fill-gaps", "--start-url", demo_site.entry_url(site))
     assert result.returncode == 1, result.stdout
-    assert "The series appears changed: file number 9 at position 4 is not between 2 and 6" in result.stdout
+    assert (
+        "The series appears changed: MAIN file number 9 at position 4 is not between 2 and 6" in result.stdout
+    )
+
+
+# ==============================================================================
+# TWO FILE STREAMS: MAIN AND SIDE
+# ==============================================================================
+SIDE_FILES = ["side1.pdf", "side4.pdf"]
+
+
+def test_main_and_side_streams_into_separate_folders(tmp_path, site):
+    config = token_config(tmp_path, site, side_file_link_pattern=demo_site.SIDE_PATTERN)
+    result = run(config)
+    assert result.returncode == 0, result.stdout
+    assert out_files(tmp_path, "MAIN") == TOKEN_FILES
+    assert out_files(tmp_path, "SIDE") == SIDE_FILES
+    assert (tmp_path / "out" / "SIDE" / "side4.pdf").read_bytes() == b"SIDEDATAside4.pdf"
+    rows = manifest_rows(tmp_path)
+    side_saved = [r["saved_name"] for r in rows if r["stream"] == "SIDE" and r["status"] == "SAVE"]
+    assert side_saved == ["SIDE/side1.pdf", "SIDE/side4.pdf"]
+    # A page without a SIDE link is no gap.
+    assert "Gaps: 1" in run(config, "--gaps").stdout  # only MAIN nofile at position 3
+
+    # Rerun with new links: both streams are skipped by position, no file request.
+    site.token = "b2"
+    before = dict(site.counts)
+    result = run(config, "--start-url", demo_site.entry_url(site))
+    assert result.returncode == 0, result.stdout
+    assert out_files(tmp_path, "SIDE") == SIDE_FILES
+    assert not any(path.startswith("/files/") for path in counts_since(site, before))
+
+
+def test_side_stream_off_without_pattern(tmp_path, site):
+    config = token_config(tmp_path, site)
+    assert run(config).returncode == 0
+    assert out_files(tmp_path, "SIDE") == []  # the folder exists, but no SIDE pattern is set
+    assert not any(path.startswith("/files/s") for path in site.counts)
+
+
+def test_side_failure_is_filled_without_main_requests(tmp_path, site):
+    site.side_broken.add(4)
+    config = token_config(
+        tmp_path, site, side_file_link_pattern=demo_site.SIDE_PATTERN, max_consecutive_failures=0
+    )
+    assert run(config).returncode == 0
+    assert out_files(tmp_path, "SIDE") == ["side1.pdf"]
+    assert "position 4: SIDE failed" in run(config, "--gaps").stdout
+
+    site.side_broken.clear()
+    site.token = "b2"
+    before = dict(site.counts)
+    result = run(config, "--fill-gaps", "--start-url", demo_site.entry_url(site))
+    assert result.returncode == 0, result.stdout
+    assert out_files(tmp_path, "SIDE") == SIDE_FILES
+    assert out_files(tmp_path, "MAIN") == TOKEN_FILES
+    since = counts_since(site, before)
+    assert [path for path in since if path.startswith("/files/")] == ["/files/s4"]

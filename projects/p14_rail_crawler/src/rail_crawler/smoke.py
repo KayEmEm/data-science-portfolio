@@ -6,6 +6,7 @@ Usage: python -m rail_crawler.smoke [output folder]   (default artifacts/smoke)
 """
 
 import csv
+import shutil
 import sys
 from pathlib import Path
 
@@ -54,8 +55,7 @@ def main(argv=None):
     stale = ("files", "debug_pages", "manifest.csv", "crawl_state.json", "crawl.log")
     for old in (folder / name for name in stale):
         if old.is_dir():
-            for item in old.iterdir():
-                item.unlink()
+            shutil.rmtree(old)
         elif old.exists():
             old.unlink()
 
@@ -65,7 +65,7 @@ def main(argv=None):
     finally:
         demo_site.stop(site)
 
-    saved = sorted(p.name for p in (folder / "files").iterdir() if not p.name.startswith("."))
+    saved = sorted(p.name for p in (folder / "files" / "MAIN").iterdir() if not p.name.startswith("."))
     with open(folder / "manifest.csv", newline="", encoding="utf-8") as f:
         statuses = [row["status"] for row in csv.DictReader(f)]
     checks = {

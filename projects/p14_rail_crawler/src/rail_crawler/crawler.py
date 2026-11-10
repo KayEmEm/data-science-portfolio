@@ -99,9 +99,10 @@ REQUIRED_KEYS = (
     "cookie_file",
     "crawl_log",
     "user_agent",
-    "file_link_pattern",
     "next_page_pattern",
 )
+# The MAIN pattern is required; file_link_pattern is its older name.
+MAIN_PATTERN_KEYS = ("main_file_link_pattern", "file_link_pattern")
 USER_AGENT_HINT = (
     'user_agent: copy the "User agent" line from chrome://version '
     "in the Chrome browser that exported the cookie file."
@@ -132,6 +133,7 @@ DEFAULTS = {
     "skip_saved": True,
     "state_file": None,
     "register_file": None,
+    "side_file_link_pattern": None,
     "file_number_pattern": None,
     "max_link_refreshes": 1,
     "min_walk_delay": None,
@@ -199,15 +201,24 @@ MANIFEST_FIELDS = [
     "size",
     "sha256",
     "status",
+    "stream",
 ]
-# Register rows use ROW_SAVE, ROW_MISS and ROW_FAIL as status.
-REGISTER_FIELDS = ["position", "status", "saved_name", "file_number", "size", "sha256", "updated"]
+# Register rows use ROW_SAVE, ROW_MISS and ROW_FAIL as status. saved_name is
+# relative to download_dir and includes the stream folder (MAIN/1.jpg).
+REGISTER_FIELDS = ["position", "stream", "status", "saved_name", "file_number", "size", "sha256", "updated"]
+
+# File streams. Each page can link to one MAIN file and one SIDE file; each
+# stream has its own link pattern and its own folder under download_dir.
+# All names have equal length.
+STREAM_MAIN = "MAIN"
+STREAM_SIDE = "SIDE"
+STREAMS = (STREAM_MAIN, STREAM_SIDE)
 GAP_SHOWN = 20
 
 # Gap reasons. All reasons have equal length.
-GAP_UNSEEN = "unseen"  # no row for this position
+GAP_UNSEEN = "unseen"  # no row for this position and stream
 GAP_FAILED = "failed"  # download failed
-GAP_NOFILE = "nofile"  # page without a file link
+GAP_NOFILE = "nofile"  # page without a MAIN file link (a missing SIDE link is no gap)
 GAP_NODISK = "nodisk"  # saved file no longer in download_dir
 
 # Debug page reasons. All reasons have equal length.
@@ -291,6 +302,8 @@ def load_config(path):
         config_error(f"cannot read {path} ({e})")
 
     missing = [key for key in REQUIRED_KEYS if not raw.get(key)]
+    if not any(raw.get(key) for key in MAIN_PATTERN_KEYS):
+        missing.append(MAIN_PATTERN_KEYS[0])
     if missing:
         hint = f" {USER_AGENT_HINT}" if "user_agent" in missing else ""
         config_error(f"missing required keys: {', '.join(missing)}.{hint}")
@@ -375,7 +388,14 @@ def load_config(path):
     if cfg["timeout_ms"] <= 0 or cfg["max_retry_after"] < 0:
         config_error("timeout_seconds must be > 0 and max_retry_after_seconds >= 0")
 
-    cfg["file_re"] = compile_pattern(merged["file_link_pattern"], "file_link_pattern")
+    main_key = next(key for key in MAIN_PATTERN_KEYS if raw.get(key))
+    side_pattern = merged.get("side_file_link_pattern")
+    cfg["link_res"] = {
+        STREAM_MAIN: compile_pattern(merged[main_key], main_key),
+        STREAM_SIDE: compile_pattern(side_pattern, "side_file_link_pattern") if side_pattern else None,
+    }
+    cfg["streams"] = [stream for stream in STREAMS if cfg["link_res"][stream] is not None]
+    cfg["stream_dirs"] = {stream: os.path.join(cfg["download_dir"], stream) for stream in STREAMS}
     cfg["next_re"] = compile_pattern(merged["next_page_pattern"], "next_page_pattern")
     pattern = merged["session_expired_pattern"]
     cfg["session_re"] = (
@@ -743,20 +763,35 @@ class Manifest:
     def __init__(self, path):
         self.path = path
         self.saved = {}
-        if path and os.path.isfile(path):
+        # A manifest written before the stream column existed keeps its header.
+        self.fields = MANIFEST_FIELDS
+        if path and os.path.isfile(path) and os.path.getsize(path) > 0:
             with open(path, newline="", encoding="utf-8") as f:
-                for row in csv.DictReader(f):
+                reader = csv.DictReader(f)
+                for row in reader:
                     if row.get("status") == ROW_SAVE and row.get("file_url"):
                         self.saved[row["file_url"]] = row.get("saved_name", "")
+                if reader.fieldnames:
+                    self.fields = list(reader.fieldnames)
 
-    def record(self, status, page_number, page_url, file_url="", saved_name="", size="", sha256=""):
+    def record(
+        self,
+        status,
+        page_number,
+        page_url,
+        file_url="",
+        saved_name="",
+        size="",
+        sha256="",
+        stream=STREAM_MAIN,
+    ):
         if status == ROW_SAVE:
             self.saved[file_url] = saved_name
         if not self.path:
             return
         write_header = not os.path.isfile(self.path) or os.path.getsize(self.path) == 0
         with open(self.path, "a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=MANIFEST_FIELDS)
+            writer = csv.DictWriter(f, fieldnames=self.fields, extrasaction="ignore")
             if write_header:
                 writer.writeheader()
             writer.writerow(
@@ -769,6 +804,7 @@ class Manifest:
                     "size": size,
                     "sha256": sha256,
                     "status": status,
+                    "stream": stream,
                 }
             )
 
@@ -796,9 +832,11 @@ class WalkPlan:
 
 class Register:
     """
-    One row per position in the series (position 1 = entry page), rewritten
-    after each change. Page and file URLs can expire between visits, so the
-    position identifies a page, not its URL.
+    One row per position and stream (position 1 = entry page), rewritten after
+    each change. Page and file URLs can expire between visits, so the position
+    identifies a page, not its URL. saved_name is relative to download_dir. A
+    register written before streams existed has no stream column; its rows
+    count as MAIN.
     """
 
     def __init__(self, path, number_re=None, read_only=False):
@@ -809,8 +847,9 @@ class Register:
         if path and os.path.isfile(path):
             with open(path, newline="", encoding="utf-8") as f:
                 for row in csv.DictReader(f):
+                    stream = row.get("stream") or STREAM_MAIN
                     try:
-                        self.rows[int(row["position"])] = row
+                        self.rows[(int(row["position"]), stream)] = dict(row, stream=stream)
                     except (KeyError, TypeError, ValueError):
                         continue
 
@@ -818,7 +857,7 @@ class Register:
         """Number from capture group 1 of file_number_pattern in a file name, or None."""
         if not self.number_re or not name:
             return None
-        match = self.number_re.search(name)
+        match = self.number_re.search(os.path.basename(name))
         if not match or match.group(1) is None:
             return None
         try:
@@ -826,10 +865,11 @@ class Register:
         except ValueError:
             return None
 
-    def set(self, position, status, saved_name="", size="", sha256=""):
+    def set(self, position, stream, status, saved_name="", size="", sha256=""):
         number = self.file_number(saved_name)
-        self.rows[position] = {
+        self.rows[(position, stream)] = {
             "position": position,
+            "stream": stream,
             "status": status,
             "saved_name": saved_name,
             "file_number": "" if number is None else number,
@@ -846,13 +886,13 @@ class Register:
         with open(partial, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=REGISTER_FIELDS)
             writer.writeheader()
-            for position in sorted(self.rows):
-                writer.writerow({key: self.rows[position].get(key, "") for key in REGISTER_FIELDS})
+            for key in sorted(self.rows, key=lambda k: (k[0], STREAMS.index(k[1]) if k[1] in STREAMS else 9)):
+                writer.writerow({field: self.rows[key].get(field, "") for field in REGISTER_FIELDS})
         os.replace(partial, self.path)
 
-    def saved_name(self, position, download_dir):
-        """Name of the file saved for this position if it is still on disk, else None."""
-        row = self.rows.get(position)
+    def saved_name(self, position, stream, download_dir):
+        """Name of the file saved for this position and stream if it is still on disk, else None."""
+        row = self.rows.get((position, stream))
         if (
             row
             and row.get("status") == ROW_SAVE
@@ -863,53 +903,67 @@ class Register:
         return None
 
     def furthest(self):
-        return max(self.rows, default=0)
+        return max((position for position, _stream in self.rows), default=0)
 
-    def gaps(self, download_dir):
-        """{position: reason} for positions up to the furthest one without a saved file."""
+    def gaps(self, download_dir, streams=(STREAM_MAIN,)):
+        """
+        {position: reason} for positions up to the furthest one where a stream
+        has no saved file. Reasons name the stream, for example "MAIN failed".
+        A page without a SIDE link is not a gap.
+        """
+        seen = {position for position, _stream in self.rows}
         found = {}
         for position in range(1, self.furthest() + 1):
-            row = self.rows.get(position)
-            if row is None:
-                found[position] = GAP_UNSEEN
-            elif row.get("status") == ROW_FAIL:
-                found[position] = GAP_FAILED
-            elif row.get("status") == ROW_MISS:
-                found[position] = GAP_NOFILE
-            elif self.saved_name(position, download_dir) is None:
-                found[position] = GAP_NODISK
+            if position not in seen:
+                found[position] = f"{streams[0]} {GAP_UNSEEN}"
+                continue
+            reasons = []
+            for stream in streams:
+                row = self.rows.get((position, stream))
+                status = row.get("status") if row else None
+                if row is None:
+                    reasons.append(f"{stream} {GAP_UNSEEN}")
+                elif status == ROW_FAIL:
+                    reasons.append(f"{stream} {GAP_FAILED}")
+                elif status == ROW_MISS:
+                    if stream == STREAM_MAIN:
+                        reasons.append(f"{stream} {GAP_NOFILE}")
+                elif self.saved_name(position, stream, download_dir) is None:
+                    reasons.append(f"{stream} {GAP_NODISK}")
+            if reasons:
+                found[position] = ", ".join(reasons)
         return found
 
-    def plan(self, download_dir, stop_at_last_gap=False):
-        gaps = self.gaps(download_dir)
+    def plan(self, download_dir, streams=(STREAM_MAIN,), stop_at_last_gap=False):
+        gaps = self.gaps(download_dir, streams)
         stop_after = max(gaps) if stop_at_last_gap and gaps else None
         return WalkPlan(self.furthest(), gaps, stop_after)
 
-    def numbers(self):
-        """[(position, file number)] of saved positions with a number, by position."""
+    def numbers(self, stream):
+        """[(position, file number)] of saved positions of one stream with a number, by position."""
         pairs = []
-        for position in sorted(self.rows):
-            row = self.rows[position]
+        for (position, row_stream), row in sorted(self.rows.items()):
             value = str(row.get("file_number", ""))
-            if row.get("status") == ROW_SAVE and value.isdigit():
+            if row_stream == stream and row.get("status") == ROW_SAVE and value.isdigit():
                 pairs.append((position, int(value)))
         return pairs
 
-    def neighbour_numbers(self, position):
-        """File numbers of the nearest saved positions before and after, or None."""
-        before = [n for p, n in self.numbers() if p < position]
-        after = [n for p, n in self.numbers() if p > position]
+    def neighbour_numbers(self, position, stream):
+        """File numbers of the nearest saved positions of the stream before and after, or None."""
+        pairs = self.numbers(stream)
+        before = [n for p, n in pairs if p < position]
+        after = [n for p, n in pairs if p > position]
         return (before[-1] if before else None), (after[0] if after else None)
 
-    def number_report(self):
+    def number_report(self, stream):
         """
-        Compares the file numbers of neighbouring saved positions. Returns
-        (skipped, open, disorder): numbers missing between adjacent positions,
-        which the site skipped, since no page lies between them; numbers missing
-        across positions that are gaps, which those positions may hold; and
-        positions whose number is not above the number before them.
+        Compares the file numbers of neighbouring saved positions of one
+        stream. Returns (skipped, open, disorder): numbers missing between
+        adjacent positions, which the site skipped, since no page lies between
+        them; numbers missing across other positions, which those positions
+        may hold; and positions whose number is not above the number before them.
         """
-        pairs = self.numbers()
+        pairs = self.numbers(stream)
         skipped, open_numbers, disorder = [], [], []
         for (p1, n1), (p2, n2) in zip(pairs, pairs[1:], strict=False):
             if n2 <= n1:
@@ -1305,9 +1359,10 @@ class Crawler:
             result.sha256 = digest.hexdigest()
             return result
 
-    def download_file(self, number, page_url, file_url):
+    def download_file(self, number, page_url, file_url, stream=STREAM_MAIN):
         """
-        Returns (path, size, sha256) or None. Raises SessionExpired, or
+        Saves the file into the folder of the stream. Returns (path, size,
+        sha256) or None. Raises SessionExpired, or
         LinkExpired when the response is not a file payload: an HTML page, or
         an HTTP status in EXPIRED_STATUSES.
         """
@@ -1331,7 +1386,7 @@ class Crawler:
                     self.remove_part()
                     log(
                         WARN,
-                        f"[Page {number}] File response is HTTP {result.status}, not a file; "
+                        f"[Page {number}] [{stream}] File response is HTTP {result.status}, not a file; "
                         "the link is treated as expired.",
                     )
                     raise LinkExpired(file_url)
@@ -1346,7 +1401,8 @@ class Crawler:
                         raise SessionExpired(file_url)
                     log(
                         WARN,
-                        f"[Page {number}] File response is HTML, not a file; the link is treated as expired.",
+                        f"[Page {number}] [{stream}] File response is HTML, not a file; "
+                        "the link is treated as expired.",
                     )
                     self.save_debug_page(number, file_url, result.html_text, WHY_FAILED)
                     raise LinkExpired(file_url)
@@ -1360,7 +1416,7 @@ class Crawler:
                         )
                     else:
                         name = choose_filename(result.headers.get("content-disposition"), file_url, number)
-                        path = unique_path(self.cfg["download_dir"], name)
+                        path = unique_path(self.cfg["stream_dirs"][stream], name)
                         os.replace(self.part_path, path)
                         return path, result.size, result.sha256
 
@@ -1370,33 +1426,34 @@ class Crawler:
         return None
 
     # --- Page processing -----------------------------------------------------
-    def check_file_number(self, number, name):
+    def check_file_number(self, number, stream, name):
         """During a walk, raises SeriesChanged if the file number does not fit its neighbours."""
         if self.plan is None or self.cfg["file_number_re"] is None:
             return
         value = self.register.file_number(name)
         if value is None:
-            log(WARN, f"[Page {number}] file_number_pattern finds no number in {name}.")
+            log(WARN, f"[Page {number}] [{stream}] file_number_pattern finds no number in {name}.")
             return
-        before, after = self.register.neighbour_numbers(number)
+        before, after = self.register.neighbour_numbers(number, stream)
         if (before is not None and value <= before) or (after is not None and value >= after):
             raise SeriesChanged(
-                f"file number {value} at position {number} is not between {before} and {after}"
+                f"{stream} file number {value} at position {number} is not between {before} and {after}"
             )
 
-    def handle_file(self, number, page_url, file_url):
+    def handle_file(self, number, page_url, file_url, stream=STREAM_MAIN):
         if self.dry_run:
-            log(INFO, f"[Page {number}] Dry run. File link: {file_url}")
+            log(INFO, f"[Page {number}] [{stream}] Dry run. File link: {file_url}")
             return
+        download_dir = self.cfg["download_dir"]
         if self.cfg["skip_saved"]:
-            existing = self.register.saved_name(number, self.cfg["download_dir"])
+            existing = self.register.saved_name(number, stream, download_dir)
             if existing is None:
-                existing = self.manifest.already_saved(file_url, self.cfg["download_dir"])
+                existing = self.manifest.already_saved(file_url, download_dir)
                 if existing is not None:
-                    self.register.set(number, ROW_SAVE, existing)
+                    self.register.set(number, stream, ROW_SAVE, existing)
             if existing:
-                log(INFO, f"[Page {number}] Already saved as {existing}. Skipped.")
-                self.manifest.record(ROW_SKIP, number, page_url, file_url, existing)
+                log(INFO, f"[Page {number}] [{stream}] Already saved as {existing}. Skipped.")
+                self.manifest.record(ROW_SKIP, number, page_url, file_url, existing, stream=stream)
                 self.stats["skipped"] += 1
                 self.consecutive_failures = 0
                 return
@@ -1404,39 +1461,39 @@ class Crawler:
         refreshes = self.cfg["max_link_refreshes"]
         saved = None
         while True:
-            log(INFO, f"[Page {number}] File link: {file_url}")
+            log(INFO, f"[Page {number}] [{stream}] File link: {file_url}")
             try:
-                saved = self.download_file(number, page_url, file_url)
+                saved = self.download_file(number, page_url, file_url, stream)
                 break
             except LinkExpired:
                 if refreshes <= 0:
                     break
                 refreshes -= 1
                 self.stats["refreshed"] += 1
-                log(INFO, f"[Page {number}] Loading the page again for a new file link.")
+                log(INFO, f"[Page {number}] [{stream}] Loading the page again for a new file link.")
                 self.sleep(random.uniform(*self.cfg["page_delay"]), "Link refresh delay")
-                file_url = self.fresh_file_link(number, page_url)
+                file_url = self.fresh_file_link(number, page_url, stream)
                 if file_url is None:
                     break
 
         if saved:
             path, size, sha256 = saved
-            name = os.path.basename(path)
-            log(INFO, f"[Page {number}] Saved {name} ({size} bytes)")
-            self.manifest.record(ROW_SAVE, number, page_url, file_url, name, size, sha256)
-            self.register.set(number, ROW_SAVE, name, size, sha256)
+            name = os.path.relpath(path, download_dir)
+            log(INFO, f"[Page {number}] [{stream}] Saved {name} ({size} bytes)")
+            self.manifest.record(ROW_SAVE, number, page_url, file_url, name, size, sha256, stream=stream)
+            self.register.set(number, stream, ROW_SAVE, name, size, sha256)
             self.stats["saved"] += 1
             self.consecutive_failures = 0
-            self.check_file_number(number, name)
+            self.check_file_number(number, stream, name)
         else:
-            log(FAIL, f"[Page {number}] Download failed: {file_url}. Continuing.")
-            self.manifest.record(ROW_FAIL, number, page_url, file_url)
-            self.register.set(number, ROW_FAIL)
-            self.failed.append(file_url)
+            log(FAIL, f"[Page {number}] [{stream}] Download failed: {file_url}. Continuing.")
+            self.manifest.record(ROW_FAIL, number, page_url, file_url, stream=stream)
+            self.register.set(number, stream, ROW_FAIL)
+            self.failed.append(f"{stream} {file_url}")
             self.consecutive_failures += 1
 
-    def fresh_file_link(self, number, page_url):
-        """Loads the page again and returns its file link, or None. Raises SessionExpired."""
+    def fresh_file_link(self, number, page_url, stream=STREAM_MAIN):
+        """Loads the page again and returns the file link of the stream, or None. Raises SessionExpired."""
         loaded = self.load_page(page_url)
         if loaded is None:
             log(WARN, f"[Page {number}] Page could not be loaded again; its URL may have expired.")
@@ -1446,9 +1503,12 @@ class Crawler:
         if session_re and session_re.search(source):
             self.save_debug_page(number, page_url, source, WHY_EXPIRE)
             raise SessionExpired(page_url)
-        file_urls = extract_urls(self.cfg["file_re"], source, page_url)
+        file_urls = extract_urls(self.cfg["link_res"][stream], source, page_url)
         if not file_urls:
-            log(WARN, f"[Page {number}] Page loaded again has no file link; its URL may have expired.")
+            log(
+                WARN,
+                f"[Page {number}] [{stream}] Page loaded again has no file link; its URL may have expired.",
+            )
             return None
         return file_urls[0]
 
@@ -1551,36 +1611,53 @@ class Crawler:
             self.save_debug_page(number, final_url, source, WHY_EXPIRE)
             return "end", EXIT_SESSION
 
-        file_urls = extract_urls(self.cfg["file_re"], source, final_url)
+        links = {
+            stream: extract_urls(self.cfg["link_res"][stream], source, final_url)
+            for stream in self.cfg["streams"]
+        }
         next_urls = extract_urls(self.cfg["next_re"], source, final_url)
-        log(DBUG, f"[Page {number}] Matches: {len(file_urls)} file, {len(next_urls)} next")
+        counts = ", ".join(f"{len(urls)} {stream}" for stream, urls in links.items())
+        log(DBUG, f"[Page {number}] Matches: {counts}, {len(next_urls)} next")
 
-        if not file_urls and not next_urls:
+        if not any(links.values()) and not next_urls:
             if probe:
                 return "expired", None
             log(STOP, f"[Page {number}] File link and next page link both absent on {final_url}. Halting.")
             self.save_debug_page(number, final_url, source, WHY_NOLINK)
             return "end", EXIT_HALTED
 
-        # --- File link ---
-        if file_urls:
-            if len(file_urls) > 1:
-                log(WARN, f"[Page {number}] {len(file_urls)} file link matches; using the first.")
-            try:
-                self.handle_file(number, final_url, file_urls[0])
-            except SessionExpired:
-                log(STOP, f"[Page {number}] session_expired_pattern matched on the file response. Halting.")
-                return "end", EXIT_SESSION
-            except SeriesChanged as e:
-                log(STOP, f"[Page {number}] The series appears changed: {e}. Halting.")
-                return "end", EXIT_HALTED
-        else:
-            log(WARN, f"[Page {number}] File link absent on {final_url}. No file saved. Continuing.")
-            self.no_file_link.append(final_url)
+        # --- File links, one per stream ---
+        for stream, file_urls in links.items():
+            if file_urls:
+                if len(file_urls) > 1:
+                    log(
+                        WARN,
+                        f"[Page {number}] [{stream}] {len(file_urls)} file link matches; using the first.",
+                    )
+                try:
+                    self.handle_file(number, final_url, file_urls[0], stream)
+                except SessionExpired:
+                    log(
+                        STOP,
+                        f"[Page {number}] session_expired_pattern matched on the file response. Halting.",
+                    )
+                    return "end", EXIT_SESSION
+                except SeriesChanged as e:
+                    log(STOP, f"[Page {number}] The series appears changed: {e}. Halting.")
+                    return "end", EXIT_HALTED
+                continue
+            if stream == STREAM_MAIN:
+                log(
+                    WARN,
+                    f"[Page {number}] [{stream}] File link absent on {final_url}. No file saved. Continuing.",
+                )
+                self.no_file_link.append(final_url)
+                self.save_debug_page(number, final_url, source, WHY_NOFILE)
+            else:
+                log(INFO, f"[Page {number}] [{stream}] No file link on this page.")
             if not self.dry_run:
-                self.manifest.record(ROW_MISS, number, final_url)
-                self.register.set(number, ROW_MISS)
-            self.save_debug_page(number, final_url, source, WHY_NOFILE)
+                self.manifest.record(ROW_MISS, number, final_url, stream=stream)
+                self.register.set(number, stream, ROW_MISS)
 
         limit = self.cfg["max_consecutive_failures"]
         if limit and self.consecutive_failures >= limit:
@@ -1719,22 +1796,33 @@ def report_gaps(cfg):
     directory = cfg["download_dir"]
     state = load_state(cfg["state_file"]) if cfg["state_file"] else None
     complete = bool(state and state.get("complete"))
-    gaps = register.gaps(directory)
+    gaps = register.gaps(directory, cfg["streams"])
     print(f"Register: {cfg['register_file']}")
+    print(f"Streams: {', '.join(cfg['streams'])}")
     print(f"Furthest position: {register.furthest()}. Series complete: {'yes' if complete else 'no'}.")
     print(f"Gaps: {len(gaps)}")
     for position in sorted(gaps):
         print(f"  position {position}: {gaps[position]}")
     if cfg["file_number_re"] is not None:
-        skipped, open_numbers, disorder = register.number_report()
-        print(f"Numbers skipped by the site (between adjacent positions): {short_list(skipped) or 'none'}")
-        print(f"Numbers missing next to gap positions: {short_list(open_numbers) or 'none'}")
-        print(f"Positions with a number not above the one before: {short_list(disorder) or 'none'}")
+        for stream in cfg["streams"]:
+            skipped, open_numbers, disorder = register.number_report(stream)
+            print(f"{stream} numbers skipped by the site: {short_list(skipped) or 'none'}")
+            print(f"{stream} numbers missing across other positions: {short_list(open_numbers) or 'none'}")
+            print(
+                f"{stream} positions with a number not above the one before: {short_list(disorder) or 'none'}"
+            )
     registered = {row.get("saved_name") for row in register.rows.values()}
     on_disk = []
-    if os.path.isdir(directory):
-        on_disk = sorted(n for n in os.listdir(directory) if not n.startswith(".") and n not in registered)
-    print(f"Files in download_dir not in the register: {short_list(on_disk) or 'none'}")
+    for folder in ("", *STREAMS):
+        path = os.path.join(directory, folder)
+        if not os.path.isdir(path):
+            continue
+        for name in os.listdir(path):
+            relative = os.path.join(folder, name) if folder else name
+            if name.startswith(".") or relative in registered or (not folder and name in STREAMS):
+                continue
+            on_disk.append(relative)
+    print(f"Files in download_dir not in the register: {short_list(sorted(on_disk)) or 'none'}")
     return EXIT_DONE
 
 
@@ -1753,6 +1841,8 @@ def main(argv=None):
         return report_gaps(cfg)
 
     os.makedirs(cfg["download_dir"], exist_ok=True)
+    for folder in cfg["stream_dirs"].values():
+        os.makedirs(folder, exist_ok=True)
     if cfg["debug_dir"]:
         os.makedirs(cfg["debug_dir"], exist_ok=True)
     for key in ("crawl_log", "manifest_file", "state_file", "register_file"):
@@ -1791,18 +1881,21 @@ def main(argv=None):
         check_cookie_expiry(cookies, cfg["cookie_expiry_warn_hours"])
         check_user_agent(cfg["user_agent"])
         log(INFO, f"Display mode: {cfg['display_mode']}")
+        log(INFO, f"File streams: {', '.join(cfg['streams'])}, under {cfg['download_dir']}")
         check_display(cfg["display_mode"])
 
         crawler = Crawler(cfg, cookies, dry_run=args.dry_run)
         if walk:
-            crawler.plan = crawler.register.plan(cfg["download_dir"], stop_at_last_gap=args.fill_gaps)
+            crawler.plan = crawler.register.plan(
+                cfg["download_dir"], cfg["streams"], stop_at_last_gap=args.fill_gaps
+            )
             if args.fill_gaps and not crawler.plan.gaps:
                 log(DONE, f"No gaps up to position {crawler.plan.furthest}. Nothing to do.")
                 return EXIT_DONE
             log(INFO, f"Walking from the entry URL: {entry_url}")
             log_plan(crawler.plan)
         if args.resume and cfg["register_file"]:
-            crawler.fallback = (entry_url, crawler.register.plan(cfg["download_dir"]))
+            crawler.fallback = (entry_url, crawler.register.plan(cfg["download_dir"], cfg["streams"]))
         watcher = EscapeWatcher(crawler.stop_event)
         if cfg["escape_key_stop"]:
             reason = watcher.start()
