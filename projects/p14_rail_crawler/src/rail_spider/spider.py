@@ -230,7 +230,7 @@ WHY_FAILED = "failed"
 WHY_CYCLED = "cycled"
 WHY_REDRCT = "redrct"
 
-LOG = logging.getLogger("crawler")
+LOG = logging.getLogger("spider")
 
 
 def log(level, text, **kwargs):
@@ -1057,7 +1057,7 @@ class EscapeWatcher:
 
 
 # ==============================================================================
-# CRAWLER
+# SPIDER
 # ==============================================================================
 class Spider:
     def __init__(self, cfg, cookies, dry_run=False):
