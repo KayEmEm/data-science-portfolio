@@ -486,9 +486,12 @@ def run_in_terminal(config, actions, timeout=120):
     """
     Runs the script on a pseudo terminal, followed by "stty -a" to show the
     terminal settings afterwards. actions: list of (text, count, bytes): when
-    text has appeared count times in the output, bytes are typed.
+    text has appeared count times in the output, bytes are typed. The shell
+    traps SIGINT, so a typed Ctrl+C does not end the shell (and hang up the
+    terminal) before the script has written its summary; the script itself
+    still gets the default SIGINT handling.
     """
-    command = f"{sys.executable} -m rail_spider {config}; echo EXIT=$?; stty -a"
+    command = f"trap : INT; {sys.executable} -m rail_spider {config}; echo EXIT=$?; stty -a"
     pid, master = pty.fork()
     if pid == 0:
         os.execv("/bin/sh", ["/bin/sh", "-c", command])
@@ -555,6 +558,7 @@ def test_ctrl_c_still_works_in_cbreak_mode(tmp_path, site):
     config = make_config(tmp_path, site, "/p1.html", min_page_delay=3, max_page_delay=3)
     output = run_in_terminal(config, [("Page delay", 1, b"\x03")])
     assert "Manual interruption (SIGINT)" in output, output
+    assert "EXIT=130" in output, output
     assert "Pages processed: 1" in output
 
 
