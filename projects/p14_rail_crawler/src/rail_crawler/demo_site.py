@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlsplit
 
 FILE_PATTERN = r'href="([^"]*)"(?=[^>]*>Download file<)'
 NEXT_PATTERN = r'href="([^"]*)"[^>]*rel="next"'
+SIDE_PATTERN = r'href="([^"]*)"(?=[^>]*>Side file<)'
 COOKIE_NAME = "session"
 COOKIE_VALUE = "demo"
 
@@ -61,7 +62,10 @@ PAGES = {
 # page and file link. server.broken lists file numbers that answer HTTP 500;
 # server.expire_once lists file numbers whose next request answers with an
 # "Invalid link" page; server.renumber maps a file number to another number.
+# Positions 1 and 4 also link to a SIDE file (side1.pdf, side4.pdf);
+# server.side_broken lists side file numbers that answer HTTP 500.
 TOKEN_NUMBERS = {1: 1, 2: 2, 3: None, 4: 4, 5: 6, 6: 7}
+TOKEN_SIDE = (1, 4)
 INVALID_LINK = b"<html><body>Invalid link</body></html>"
 
 
@@ -72,6 +76,8 @@ def token_page(position, token):
     number = TOKEN_NUMBERS[position]
     if number is not None:
         body += "\n" + file_link(f"files/n{number}?t={token}")
+    if position in TOKEN_SIDE:
+        body += f'\n<a class="side" href="files/s{position}?t={token}">Side file</a>'
     return body.encode()
 
 
@@ -103,6 +109,16 @@ class Handler(BaseHTTPRequestHandler):
             if token != server.token:
                 return self.reply(200, INVALID_LINK, "text/html")
             return self.reply(200, token_page(int(match.group(1)), token), "text/html")
+        match = re.fullmatch(r"/files/s(\d+)", url.path)
+        if match:
+            number = int(match.group(1))
+            if token != server.token:
+                return self.reply(200, INVALID_LINK, "text/html")
+            if number in server.side_broken:
+                return self.reply(500, b"", "text/plain")
+            name = f"side{number}.pdf"
+            disposition = {"Content-Disposition": f'attachment; filename="{name}"'}
+            return self.reply(200, b"SIDEDATA" + name.encode(), "application/pdf", disposition)
         match = re.fullmatch(r"/files/n(\d+)", url.path)
         if match:
             number = int(match.group(1))
@@ -163,6 +179,7 @@ def start():
     server.broken = set()
     server.expire_once = set()
     server.renumber = {}
+    server.side_broken = set()
     server.base = f"http://127.0.0.1:{server.server_address[1]}"
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
