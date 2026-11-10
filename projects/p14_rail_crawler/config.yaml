@@ -36,4 +36,4 @@ log_backups: 5
 escape_key_stop: true
 main_file_link_pattern: '<img id="img" src="([^"]*)" style'
 side_file_link_pattern: 'href="([^"]*)">Download original'
-next_page_pattern: href="([^"]*)"[^>]*rel="next"
+next_page_pattern: '^(?:.*?href="[^"]*"><img src){2}.*?href="([^"]*)"><img src'
