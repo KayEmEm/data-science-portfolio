@@ -34,6 +34,6 @@ console_level: INFO
 log_max_bytes: 10485760
 log_backups: 5
 escape_key_stop: true
-main_file_link_pattern: href="([^"]*)"(?=[^>]*>Download file<)
-side_file_link_pattern: null
+main_file_link_pattern: '<img id="img" src="([^"]*)" style'
+side_file_link_pattern: 'href="([^"]*)">Download original'
 next_page_pattern: href="([^"]*)"[^>]*rel="next"
