@@ -1,5 +1,5 @@
 import sys
 
-from rail_crawler.crawler import main
+from rail_crawler.spider import main
 
 sys.exit(main())

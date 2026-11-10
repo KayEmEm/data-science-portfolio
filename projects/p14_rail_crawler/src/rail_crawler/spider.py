@@ -13,7 +13,7 @@ Stopping a run:
     Ctrl+C      stops at once.
 
 Usage:
-    python -m rail_crawler <config.yaml> [--start-url URL]
+    python -m rail_crawler <cobweb.yaml> [--start-url URL]
                              [--resume | --catch-up | --fill-gaps | --gaps]
                              [--max-pages N] [--dry-run]
 

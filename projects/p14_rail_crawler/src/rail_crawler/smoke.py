@@ -12,7 +12,7 @@ from pathlib import Path
 
 import yaml
 
-from rail_crawler import crawler, demo_site
+from rail_crawler import demo_site, spider
 
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
@@ -61,7 +61,7 @@ def main(argv=None):
 
     site = demo_site.start()
     try:
-        code = crawler.main([str(write_config(folder, site.base))])
+        code = spider.main([str(write_config(folder, site.base))])
     finally:
         demo_site.stop(site)
 
@@ -69,7 +69,7 @@ def main(argv=None):
     with open(folder / "manifest.csv", newline="", encoding="utf-8") as f:
         statuses = [row["status"] for row in csv.DictReader(f)]
     checks = {
-        "exit code 0": code == crawler.EXIT_DONE,
+        "exit code 0": code == spider.EXIT_DONE,
         f"files {EXPECTED_FILES}": saved == EXPECTED_FILES,
         "manifest SAVE MISS SAVE SAVE": statuses == ["SAVE", "MISS", "SAVE", "SAVE"],
     }
