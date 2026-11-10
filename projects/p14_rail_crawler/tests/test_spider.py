@@ -330,7 +330,7 @@ def test_max_pages_then_resume(tmp_path, site):
 def test_lock_blocks_second_run(tmp_path, site):
     config = make_config(tmp_path, site, "/p1.html")
     os.makedirs(tmp_path / "out")
-    with open(tmp_path / "out" / ".crawler.lock", "a+") as handle:
+    with open(tmp_path / "out" / ".spider.lock", "a+") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         assert run(config).returncode == 3
 
@@ -377,7 +377,7 @@ def test_cookie_expiry_warning(tmp_path, site):
 def test_browser_lost_restart(tmp_path, site, monkeypatch, close_every_time):
     """Closes the browser before a page load to simulate a crash."""
     config = make_config(tmp_path, site, "/p4.html", max_browser_restarts=1)
-    original = spider.Crawler.load_page
+    original = spider.Spider.load_page
     calls = {"n": 0}
 
     def closing_load_page(self, url):
@@ -386,7 +386,7 @@ def test_browser_lost_restart(tmp_path, site, monkeypatch, close_every_time):
             self.browser.close()
         return original(self, url)
 
-    monkeypatch.setattr(spider.Crawler, "load_page", closing_load_page)
+    monkeypatch.setattr(spider.Spider, "load_page", closing_load_page)
     code = spider.main([config])
     log_text = (tmp_path / "log" / "crawl.log").read_text(encoding="utf-8")
     assert "Restart 1/1" in log_text

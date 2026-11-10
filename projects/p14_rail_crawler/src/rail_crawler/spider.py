@@ -152,7 +152,7 @@ EXPIRED_STATUSES = frozenset({400, 401, 403, 404, 410})
 BLOCKED_RESOURCE_TYPES = frozenset({"image", "media", "font", "stylesheet"})
 HTML_CONTENT_TYPES = frozenset({"text/html", "application/xhtml+xml"})
 HTTPONLY_PREFIX = "#HttpOnly_"
-LOCK_NAME = ".crawler.lock"
+LOCK_NAME = ".spider.lock"
 PART_NAME = ".incoming.part"
 CHUNK_SIZE = 1024 * 1024
 ESCAPE = b"\x1b"
@@ -1059,7 +1059,7 @@ class EscapeWatcher:
 # ==============================================================================
 # CRAWLER
 # ==============================================================================
-class Crawler:
+class Spider:
     def __init__(self, cfg, cookies, dry_run=False):
         self.cfg = cfg
         self.cookies = cookies
@@ -1884,19 +1884,19 @@ def main(argv=None):
         log(INFO, f"File streams: {', '.join(cfg['streams'])}, under {cfg['download_dir']}")
         check_display(cfg["display_mode"])
 
-        crawler = Crawler(cfg, cookies, dry_run=args.dry_run)
+        spider = Spider(cfg, cookies, dry_run=args.dry_run)
         if walk:
-            crawler.plan = crawler.register.plan(
+            spider.plan = spider.register.plan(
                 cfg["download_dir"], cfg["streams"], stop_at_last_gap=args.fill_gaps
             )
-            if args.fill_gaps and not crawler.plan.gaps:
-                log(DONE, f"No gaps up to position {crawler.plan.furthest}. Nothing to do.")
+            if args.fill_gaps and not spider.plan.gaps:
+                log(DONE, f"No gaps up to position {spider.plan.furthest}. Nothing to do.")
                 return EXIT_DONE
             log(INFO, f"Walking from the entry URL: {entry_url}")
-            log_plan(crawler.plan)
+            log_plan(spider.plan)
         if args.resume and cfg["register_file"]:
-            crawler.fallback = (entry_url, crawler.register.plan(cfg["download_dir"], cfg["streams"]))
-        watcher = EscapeWatcher(crawler.stop_event)
+            spider.fallback = (entry_url, spider.register.plan(cfg["download_dir"], cfg["streams"]))
+        watcher = EscapeWatcher(spider.stop_event)
         if cfg["escape_key_stop"]:
             reason = watcher.start()
             if reason is None:
@@ -1904,7 +1904,7 @@ def main(argv=None):
             else:
                 log(INFO, f"Escape key stop is not active: {reason}.")
         try:
-            return crawler.run(start_url, start_number, probe=args.resume)
+            return spider.run(start_url, start_number, probe=args.resume)
         finally:
             watcher.stop()
     finally:
