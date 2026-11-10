@@ -4,7 +4,7 @@ Follow a series of web pages in which each page links to one file and to the nex
 
 ## Headline result
 
-**On a synthetic series, the crawler saves every file, recovers from the failures that stop simple download scripts, and halts with a clear reason when it cannot continue. 64 tests cover these cases; `make smoke` runs the full crawl in about 2 seconds.** The tests run the crawler as a separate process against [`demo_site.py`](src/rail_crawler/demo_site.py), a local site on 127.0.0.1 that produces each situation on purpose.
+**On a synthetic series, the crawler saves every file, recovers from the failures that stop simple download scripts, and halts with a clear reason when it cannot continue. 64 tests cover these cases; `make smoke` runs the full crawl in about 2 seconds.** The tests run the crawler as a separate process against [`demo_site.py`](src/rail_spider/demo_site.py), a local site on 127.0.0.1 that produces each situation on purpose.
 
 | Situation | Behavior | Test |
 | --- | --- | --- |
@@ -88,7 +88,7 @@ All settings are in [`cobweb.yaml`](cobweb.yaml).
 | Records | `manifest_file`, `state_file`, `register_file`, `debug_dir`, `crawl_log`, `console_level`, `log_max_bytes`, `log_backups` |
 | Control | `escape_key_stop` |
 
-Command line: `python -m rail_crawler <config> [--start-url URL] [--resume | --catch-up | --fill-gaps | --gaps] [--max-pages N] [--dry-run]`.
+Command line: `python -m rail_spider <config> [--start-url URL] [--resume | --catch-up | --fill-gaps | --gaps] [--max-pages N] [--dry-run]`.
 
 | Exit code | Meaning |
 | ---: | --- |

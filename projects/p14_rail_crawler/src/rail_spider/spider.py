@@ -13,7 +13,7 @@ Stopping a run:
     Ctrl+C      stops at once.
 
 Usage:
-    python -m rail_crawler <cobweb.yaml> [--start-url URL]
+    python -m rail_spider <cobweb.yaml> [--start-url URL]
                              [--resume | --catch-up | --fill-gaps | --gaps]
                              [--max-pages N] [--dry-run]
 
@@ -410,7 +410,7 @@ def load_config(path):
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
-        prog="python -m rail_crawler",
+        prog="python -m rail_spider",
         description="Rail crawler for a linear page series. See the YAML config for settings.",
     )
     parser.add_argument("config", help="path to the YAML config file")
