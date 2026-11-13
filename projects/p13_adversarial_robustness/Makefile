@@ -1,6 +1,6 @@
 # Project 13: adversarial robustness of the models of projects 1, 6 and 8. Run from this folder.
 # `make sample` (SAMPLE=0.2) gives the committed results; `make all` runs on the full data.
-PYTHON ?= python
+PYTHON ?= uv run python
 SAMPLE ?= 0.2
 SAMPLE_DIR := artifacts/sample
 SMOKE_DIR := artifacts/smoke
@@ -13,8 +13,7 @@ SOURCES := --credit-source $(CREDIT_SOURCE) --flows-source $(FLOWS_SOURCE) --ima
 .PHONY: install data attack report all sample smoke test lint clean
 
 install:             ## this project, the shared common package and the three target projects
-	$(PYTHON) -m pip install -e ../../common -e ../p01_loan_default -e ../p06_road_damage \
-		-e ../p08_network_anomaly -e ".[dev]"
+	uv sync
 
 data:                ## the full data of each part, read by the loaders of projects 1, 6 and 8
 	$(PYTHON) -m adv_robustness.data $(SOURCES)

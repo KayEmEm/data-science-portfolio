@@ -1,5 +1,5 @@
 # Project 2: question answering over company filings. Run from this folder.
-PYTHON ?= python
+PYTHON ?= uv run python
 SMOKE_DIR := artifacts/smoke
 # Share of filings kept by `make sample`, each with all its questions; outputs stay under artifacts/sample.
 SAMPLE ?= 0.25
@@ -14,7 +14,7 @@ CONTEXTS ?= artifacts/contexts/doc_dense_k8.parquet
 	grade report all sample smoke test lint demo clean
 
 install:
-	$(PYTHON) -m pip install -e ../../common -e ".[dev,demo]"
+	uv sync --extra demo
 
 data:                ## FinanceBench questions and the 84 filings they cite (about 300 MB of PDFs)
 	$(PYTHON) -m filings_qa.data

@@ -1,6 +1,6 @@
 # Project 14: rail crawler. Run from this folder.
 # CONFIG selects the settings file; ARGS passes extra options, for example ARGS="--max-pages 3".
-PYTHON ?= python
+PYTHON ?= uv run python
 CONFIG ?= cobweb.yaml
 ARGS ?=
 SMOKE_DIR := artifacts/smoke
@@ -8,7 +8,7 @@ SMOKE_DIR := artifacts/smoke
 .PHONY: install browser crawl resume catch-up fill-gaps gaps dry-run smoke sample test lint clean
 
 install:             ## this project and Chromium for Playwright
-	$(PYTHON) -m pip install -e ".[dev]"
+	uv sync
 	$(PYTHON) -m playwright install chromium
 
 browser:             ## Chromium and its system libraries (Linux, needs sudo); for a fresh machine or CI

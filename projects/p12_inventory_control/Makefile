@@ -1,7 +1,7 @@
 # Project 12: inventory control with reinforcement learning. Run from this folder.
 # SAMPLE=0.1 runs every step on a sample: one M5 store, and that fraction of the training steps,
 # seeds and scenarios. Without it, the full run applies.
-PYTHON ?= python
+PYTHON ?= uv run python
 SOURCE ?=
 SAMPLE ?= 1
 JOBS ?= 4
@@ -11,7 +11,7 @@ RUN := --sample $(SAMPLE)
 .PHONY: install data baselines validate train evaluate report all smoke test lint clean
 
 install:             ## this project and the shared common package
-	$(PYTHON) -m pip install -e ../../common -e ".[dev]"
+	uv sync
 
 data:                ## download the M5 zip (50 MB) or read SOURCE=<zip>, select three products, fit demand
 	$(PYTHON) -m inventory_rl.data $(RUN) $(if $(SOURCE),--source $(SOURCE))

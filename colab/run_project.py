@@ -7,8 +7,9 @@ Called by ``colab/run_project.ipynb`` after Drive is mounted and the repository 
 
 Steps, all on the local disk of the Colab machine except the copies to and from Drive:
 
-1. Install the project and the local packages its Makefile installs, with the pinned
-   dependencies, except the packages that Colab provides in its own build (torch, torchvision).
+1. Install the project with uv (``uv sync --locked`` into the project ``.venv``, with the
+   extras of its Makefile ``install`` target), except the packages that Colab provides in
+   its own build (torch, torchvision); the environment sees Colab's system packages.
 2. Copy the raw files from ``<drive>/raw/<project>/`` to ``data/raw/`` of the project,
    and check them against ``colab/raw_files.yaml``: files with other names or inside a zip are
    moved or extracted to the expected place. When a file is still missing, the run stops before
@@ -22,7 +23,8 @@ Steps, all on the local disk of the Colab machine except the copies to and from 
 ``<project>`` is the project number (``p06``), or the full folder name (``p06_road_damage``)
 when only ``raw/`` holds a folder of that name.
 
-The script uses the standard library and PyYAML only, so that it runs before the install.
+The script uses the standard library and PyYAML only, so that it runs before the install;
+it installs uv with pip.
 """
 
 import argparse
@@ -33,13 +35,12 @@ import shutil
 import subprocess
 import sys
 import threading
-import tomllib
 import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 PROFILES_DIR = REPO / "colab" / "profiles"
-PROVIDED = {"torch", "torchvision"}  # Colab's own CUDA builds stay in place
+PROVIDED = {"torch", "torchvision"}  # Colab's own CUDA builds stay in use
 OUTPUTS = ("artifacts", "reports")
 PROFILE_KEYS = {"target", "sample", "mirror_minutes", "mirror_exclude", "projects"}
 PROJECT_KEYS = {"target", "sample"}
@@ -89,36 +90,39 @@ def for_project(profile: dict, project: Path) -> dict:
     return {**{k: v for k, v in profile.items() if k != "projects"}, **own}
 
 
-def local_packages(project: Path) -> list[Path]:
-    """The folders that the ``install`` target of the project Makefile installs with ``-e``."""
+def extras(project: Path) -> list[str]:
+    """The ``--extra`` options of the ``uv sync`` line in the ``install`` target of the Makefile."""
     text = (project / "Makefile").read_text(encoding="utf-8")
     block = re.search(r"^install:.*?\n((?:\t.*\n?)+)", text, flags=re.M)
-    if block is None:
-        return [REPO / "common", project]
-    found = re.findall(r"-e\s+\"?([^\s\"\[]+)", block.group(1).replace("\\\n", " "))
-    return [(project / p).resolve() for p in found]
+    found = re.findall(r"--extra\s+(\S+)", block.group(1)) if block else []
+    return [arg for name in found for arg in ("--extra", name)]
 
 
-def requirements(packages: list[Path]) -> list[str]:
-    """Pinned dependencies of the packages, without the local ones and the ones Colab provides."""
-    local = set()
-    pins: dict[str, str] = {}
-    for folder in packages:
-        with (folder / "pyproject.toml").open("rb") as handle:
-            meta = tomllib.load(handle)["project"]
-        local.add(meta["name"].lower().replace("_", "-"))
-        for spec in meta.get("dependencies", []):
-            name = re.split(r"[\s<>=!~\[;]", spec, maxsplit=1)[0].lower().replace("_", "-")
-            pins.setdefault(name, spec)
-    return [spec for name, spec in pins.items() if name not in local and name not in PROVIDED]
+def venv_python(project: Path) -> Path:
+    return project / ".venv" / "bin" / "python"
 
 
 def install(project: Path) -> None:
-    packages = local_packages(project)
-    pip = [sys.executable, "-m", "pip", "install", "-q"]
-    subprocess.run([*pip, *requirements(packages)], check=True)
-    editable = [arg for folder in packages for arg in ("-e", str(folder))]
-    subprocess.run([*pip, "--no-deps", *editable], check=True)
+    """uv sync into the project .venv, with the locked versions when uv.lock exists.
+
+    The environment sees the system packages of Colab, and the packages in PROVIDED are not
+    installed, so that Colab's own CUDA builds of PyTorch stay in use.
+    """
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "uv"], check=True)
+    uv = [sys.executable, "-m", "uv"]
+    venv = project / ".venv"
+    subprocess.run(
+        [*uv, "venv", "--quiet", "--allow-existing", "--system-site-packages",
+         "--python", sys.executable, str(venv)],
+        check=True,
+    )
+    locked = ["--locked"] if (project / "uv.lock").is_file() else []
+    skip = [arg for name in sorted(PROVIDED) for arg in ("--no-install-package", name)]
+    subprocess.run(
+        [*uv, "sync", "--quiet", "--project", str(project), *locked, *extras(project), *skip],
+        env=dict(os.environ, UV_PROJECT_ENVIRONMENT=str(venv)),
+        check=True,
+    )
 
 
 def copy_tree(source: Path, target: Path, exclude: tuple[str, ...] = ()) -> int:
@@ -389,7 +393,7 @@ class Mirror:
 
 def make_command(project: Path, target: str, sample: float | None) -> list[str]:
     """``target`` may name several Makefile targets, separated by spaces."""
-    command = ["make", "-C", str(project), *target.split(), f"PYTHON={sys.executable}"]
+    command = ["make", "-C", str(project), *target.split(), f"PYTHON={venv_python(project)}"]
     if sample is not None:
         command.append(f"SAMPLE={sample}")
     return command

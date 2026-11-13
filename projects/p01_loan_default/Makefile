@@ -1,5 +1,5 @@
 # Project 1: loan default risk. Run from this folder.
-PYTHON ?= python
+PYTHON ?= uv run python
 SMOKE_DIR := artifacts/smoke
 # Share of clients kept by `make sample`; outputs stay under artifacts/sample.
 SAMPLE ?= 0.25
@@ -8,7 +8,7 @@ SAMPLE_DIR := artifacts/sample
 .PHONY: install data features train evaluate all sample smoke test lint api docker clean
 
 install:
-	$(PYTHON) -m pip install -e ../../common -e ".[dev]"
+	uv sync
 
 data:            ## download from the UCI repository and convert to Parquet
 	$(PYTHON) -m loan_default.data

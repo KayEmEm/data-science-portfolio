@@ -1,5 +1,5 @@
 # Project 11: illicit transactions in the Elliptic Bitcoin graph. Run from this folder.
-PYTHON ?= python
+PYTHON ?= uv run python
 SOURCE ?=
 SMOKE_DIR := artifacts/smoke
 # Share of time step graphs kept by `make sample`, stratified by split; outputs stay under artifacts/sample.
@@ -9,7 +9,7 @@ SAMPLE_DIR := artifacts/sample
 .PHONY: install data network train evaluate report neo4j-export neo4j-load all sample smoke test lint clean
 
 install:             ## this project and the shared common package
-	$(PYTHON) -m pip install -e ../../common -e ".[dev]"
+	uv sync
 
 data:                ## read the Elliptic CSV files from data/raw (or SOURCE=<folder or zip>), check them
 	$(PYTHON) -m illicit_graph.data $(if $(SOURCE),--source $(SOURCE))

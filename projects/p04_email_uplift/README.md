@@ -91,7 +91,7 @@ make smoke              # the same pipeline on synthetic customers, no download
 
 `make sample SAMPLE=0.25` runs the same pipeline on a seeded share of the real customers, stratified by arm. Its data and outputs stay under `artifacts/sample/`, and `sample.json` there records the share, the seed and the counts. The option was added after the full run and was first run on Colab on 2026-10-26; those outputs are not committed, and the committed results come from the full data. The data step takes the same option as `--sample` and `--sample-seed`.
 
-CausalML may compile from source; without it (`pip install -e ../../common -e ".[dev]"`), the pipeline skips the DR learner and runs the other three models. `make smoke` writes everything under `artifacts/smoke/`. Its numbers come from synthetic data and say nothing about the campaign.
+CausalML may compile from source; without it (`uv sync`), the pipeline skips the DR learner and runs the other three models. `make smoke` writes everything under `artifacts/smoke/`. Its numbers come from synthetic data and say nothing about the campaign.
 
 ## Layout
 

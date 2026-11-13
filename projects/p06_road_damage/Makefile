@@ -1,5 +1,5 @@
 # Project 6: road damage detection on RDD2022. Run from this folder.
-PYTHON ?= python
+PYTHON ?= uv run python
 SOURCE ?= data/raw
 BACKUP ?=
 SMOKE_DIR := artifacts/smoke
@@ -10,7 +10,7 @@ SAMPLE_DIR := artifacts/sample
 .PHONY: install data train evaluate export report all demo sample smoke test lint clean
 
 install:             ## this project with the demo extra and the shared common package
-	$(PYTHON) -m pip install -e ../../common -e ".[dev,demo]"
+	uv sync --extra demo
 
 data:                ## RDD2022_Czech.zip and RDD2022_India.zip in $(SOURCE) -> audit tables and a YOLO dataset
 	$(PYTHON) -m road_damage.data --source $(SOURCE)

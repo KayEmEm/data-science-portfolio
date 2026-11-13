@@ -1,5 +1,5 @@
 # Project 5: retail demand forecasting on M5. Run from this folder.
-PYTHON ?= python
+PYTHON ?= uv run python
 SMOKE_DIR := artifacts/smoke
 # Share of item and store series kept by `make sample`; outputs stay under artifacts/sample.
 SAMPLE ?= 0.1
@@ -8,7 +8,7 @@ SAMPLE_DIR := artifacts/sample
 .PHONY: install data train evaluate report all sample smoke test lint clean
 
 install:             ## this project, the shared common package and Darts with PyTorch (about 1 GB)
-	$(PYTHON) -m pip install -e ../../common -e ".[dev,neural]"
+	uv sync --extra neural
 
 data:                ## download the M5 zip (50 MB), check it, write wide tables and demand tables per level
 	$(PYTHON) -m retail_forecast.data

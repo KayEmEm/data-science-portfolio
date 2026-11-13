@@ -22,12 +22,13 @@ Fourteen projects, one per task type. Projects 1 to 13 each solve one concrete p
 ## Shared conventions
 
 * **README first:** problem, dataset and license, approach, headline result, and how to reproduce in three commands or fewer.
-* **Reproducibility:** one `pyproject.toml` with pinned dependencies per project, a fixed seed, and a `Makefile` with `data`, `train` and `evaluate` targets.
+* **Reproducibility:** one `pyproject.toml` with pinned dependencies and one `uv.lock` per project, a fixed seed, and a `Makefile` with `data`, `train` and `evaluate` targets.
+* **Environments with [uv](https://docs.astral.sh/uv/):** `make install` (that is, `uv sync` with the project's extras) creates `.venv` in the project folder from its `uv.lock`; the Makefile targets run through `uv run`. The shared package `common/` (and, for project 13, projects 1, 6 and 8) comes in as an editable path source. Commands shown as `python -m ...` in the project READMEs run as `uv run python -m ...`, or plainly after `source .venv/bin/activate`. Python 3.13 (`.python-version`); uv installs it if needed.
 * **Data:** downloaded by a script and never committed. Only synthetic fixtures enter the repository.
 * **Sample runs:** `make sample SAMPLE=<share>` runs a project's real pipeline on a seeded share of whole units (clients, filings, series, users, time step graphs), through `portfolio_common.sample`. Outputs stay under `artifacts/sample/`; the committed results come from the full data.
 * **Settings in YAML:** each project keeps every option of its commands and every field of its settings classes in `config.yaml`, one key per command (`train`, `evaluate`, ...) and `settings` for the classes. A run takes changes from `--config <file>` or from the files listed in `PORTFOLIO_CONFIG`; options on the command line win over all files. `--print-config` shows the resolved values of a command. Relative paths in a file are relative to its folder. Options whose default is computed in code (from the environment, the processor count or a settings class) are not listed, but a file may still set them.
 * **Colab:** [`colab/run_project.ipynb`](colab/run_project.ipynb) runs any project in Google Colab with Google Drive as the only storage, on the free tier or Colab Pro; see [`colab/README.md`](colab/README.md).
-* **Quality gates:** ruff and pytest in GitHub Actions; each project job runs only when its folder or `common/` changes.
+* **Quality gates:** ruff and pytest in GitHub Actions, with `uv sync --locked`; each project job runs only when its folder or `common/` changes.
 * **Tracking:** MLflow, stored locally.
 * **Honest evaluation:** a simple baseline next to the main model, with the metric chosen for the business question.
 
