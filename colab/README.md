@@ -4,9 +4,9 @@
 [open it in Colab](https://colab.research.google.com/github/KayEmEm/data-science-portfolio/blob/main/colab/run_project.ipynb).
 Each run clones the repository onto the local disk of the Colab machine, installs the project, copies its raw files from Drive, runs it, and copies the outputs back to Drive. The same notebook and code serve the free tier and Colab Pro; only the profile changes.
 
-## Pinned version
+## Code version
 
-The notebook runs the code at the tag `colab-v4`, not the latest `main`, so a change reaches Colab only after it is reviewed and the pin moves. To move the pin: create a new tag (`colab-v5`) on the reviewed commit of `main`, and change the default of `REF` in the notebook in the same step. `REF` accepts any branch, tag or commit for a single run.
+The notebook always runs the latest `main`: each run clones it afresh (depth 1) and prints the commit it runs. A change reaches Colab as soon as it is merged into `main`.
 
 ## Drive layout
 
