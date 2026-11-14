@@ -46,6 +46,13 @@ portfolio-common = {path = "../../common", editable = true}
 loan-default = {path = "../p01_loan_default", editable = true}
 road-damage = {path = "../p06_road_damage", editable = true}
 flow-anomaly = {path = "../p08_network_anomaly", editable = true}
+torch = {index = "pytorch-cpu"}
+torchvision = {index = "pytorch-cpu"}
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [dependency-groups]
 dev = ["pytest==9.1.1", "ruff==0.17.2"]

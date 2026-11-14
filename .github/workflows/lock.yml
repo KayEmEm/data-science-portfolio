@@ -1,0 +1,47 @@
+name: Lock
+
+# Writes the uv.lock files of packages whose lock is missing or out of date, and commits them
+# to the branch. The PyTorch CPU index (download.pytorch.org) that projects 5 to 8 and 11 to 13
+# use is reachable from GitHub runners. Commits made with GITHUB_TOKEN do not start other
+# workflows, so CI runs again with the next push.
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+    paths:
+      - "common/pyproject.toml"
+      - "projects/*/pyproject.toml"
+      - ".github/workflows/lock.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Lock packages with a missing or outdated uv.lock
+        run: |
+          for dir in common projects/*/; do
+            dir=${dir%/}
+            [ -f "$dir/pyproject.toml" ] || continue
+            if (cd "$dir" && uv lock --check > /dev/null 2>&1); then
+              echo "up to date: $dir"
+            else
+              echo "locking: $dir"
+              (cd "$dir" && uv lock)
+            fi
+          done
+      - name: Commit changed lock files
+        run: |
+          git add common/uv.lock projects/*/uv.lock
+          if git diff --cached --quiet; then
+            echo "No lock file changed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update uv.lock files"
+          git push
