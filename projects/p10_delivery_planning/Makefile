@@ -1,5 +1,5 @@
 # Project 10: delivery routes and driver shifts on the Solomon VRPTW benchmark. Run from this folder.
-PYTHON ?= python
+PYTHON ?= uv run python
 SOURCE ?=
 SMOKE_DIR := artifacts/smoke
 # Share of instances kept by `make sample`, stratified by class; outputs stay under artifacts/sample.
@@ -9,7 +9,7 @@ SAMPLE_DIR := artifacts/sample
 .PHONY: install data train evaluate report planner all sample smoke test lint clean
 
 install:             ## this project, the shared common package and the optional Gurobi package
-	$(PYTHON) -m pip install -e ../../common -e ".[dev,gurobi]"
+	uv sync --extra gurobi
 
 data:                ## download the 56 instances with best known solutions (or SOURCE=<folder or zip>), check them
 	$(PYTHON) -m delivery_planning.data $(if $(SOURCE),--source $(SOURCE))

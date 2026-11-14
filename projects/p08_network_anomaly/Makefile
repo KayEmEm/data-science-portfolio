@@ -1,5 +1,5 @@
 # Project 8: anomaly detection on UNSW-NB15 network flows. Run from this folder.
-PYTHON ?= python
+PYTHON ?= uv run python
 SOURCE ?=
 SMOKE_DIR := artifacts/smoke
 # Share of flows kept by `make sample`, stratified by attack type and split; outputs stay under artifacts/sample.
@@ -9,7 +9,7 @@ SAMPLE_DIR := artifacts/sample
 .PHONY: install data train evaluate report all sample smoke test lint clean
 
 install:             ## this project and the shared common package
-	$(PYTHON) -m pip install -e ../../common -e ".[dev]"
+	uv sync
 
 data:                ## read the UNSW-NB15 CSV files from data/raw (or SOURCE=<folder>), check them, split
 	$(PYTHON) -m flow_anomaly.data $(if $(SOURCE),--source $(SOURCE))

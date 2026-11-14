@@ -1,5 +1,5 @@
 # Project 3: New York taxi demand, exploratory analysis and dashboard. Run from this folder.
-PYTHON ?= python
+PYTHON ?= uv run python
 YEAR ?= 2024
 SMOKE_DIR := artifacts/smoke
 # Share of the trips of every month kept by `make sample`; outputs stay under artifacts/sample.
@@ -9,7 +9,7 @@ SAMPLE_DIR := artifacts/sample
 .PHONY: install data ingest build report notebook dashboard screenshots all sample smoke test lint clean
 
 install:
-	$(PYTHON) -m pip install -e ../../common -e ".[dev,notebook,screenshots]"
+	uv sync --extra notebook --extra screenshots
 
 data:                ## TLC trip files for one year (about 650 MB), the zone lookup and NOAA weather
 	$(PYTHON) -m taxi_demand.data --year $(YEAR)

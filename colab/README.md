@@ -52,7 +52,7 @@ Most projects write the reports of a run to `artifacts/sample/reports/`, so `out
 
 ## Limits
 
-* Colab keeps its own Python, CUDA and PyTorch builds; the notebook installs the exact pins of the project except `torch` and `torchvision`. A pin that conflicts with a package Colab provides shows on the first run.
+* Colab keeps its own Python, CUDA and PyTorch builds. The runner installs uv and runs `uv sync --locked` into the project `.venv`, with the extras of the Makefile `install` target and the versions of the project `uv.lock`, except `torch` and `torchvision`. The environment sees Colab's system packages, so its CUDA builds of PyTorch stay in use. A project without `uv.lock` is resolved at install time.
 * A session that ends during a run keeps what was last copied to Drive. With `RESUME`, those outputs are copied back first: steps that resume (p02 generation, p06 training from its last epoch, p10 and p12 training) continue; other steps run again from their start.
 * The dashboards (p03, p10), the scoring API and Docker image (p01), the Airflow DAG (p03) and the Neo4j export (p11) run outside Colab.
 * `drive.mount` gives the notebook access to the whole Drive, not only `MyDrive/portfolio`.

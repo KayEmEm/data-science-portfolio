@@ -87,7 +87,7 @@ To load the graph into Neo4j (Docker, from this folder, after `make all`):
 ```bash
 docker run -d --name p11-neo4j -p 7474:7474 -p 7687:7687 \
   -v "$PWD/artifacts/neo4j:/import" -e NEO4J_AUTH=neo4j/<password> neo4j:5.26
-pip install -e ".[neo4j]"
+uv sync --extra neo4j
 NEO4J_PASSWORD=<password> make neo4j-load   # runs neo4j/load.cypher, then neo4j/queries.cypher
 ```
 

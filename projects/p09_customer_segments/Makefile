@@ -1,5 +1,5 @@
 # Project 9: customer segments from Online Retail II. Run from this folder.
-PYTHON ?= python
+PYTHON ?= uv run python
 SOURCE ?=
 SMOKE_DIR := artifacts/smoke
 # Share of customers kept by `make sample`, each with all their order lines; outputs stay under artifacts/sample.
@@ -9,7 +9,7 @@ SAMPLE_DIR := artifacts/sample
 .PHONY: install data train evaluate report all sample smoke test lint clean
 
 install:             ## this project and the shared common package
-	$(PYTHON) -m pip install -e ../../common -e ".[dev]"
+	uv sync
 
 data:                ## read online_retail_II.xlsx from data/raw (or SOURCE=<file, zip or folder>), check, clean
 	$(PYTHON) -m customer_segments.data $(if $(SOURCE),--source $(SOURCE))

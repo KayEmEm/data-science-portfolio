@@ -11,24 +11,28 @@ run_project = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(run_project)
 
 
-def test_local_packages_follow_the_install_target():
-    names = [p.name for p in run_project.local_packages(run_project.project_dir("p13"))]
-    assert names == [
-        "common",
-        "p01_loan_default",
-        "p06_road_damage",
-        "p08_network_anomaly",
-        "p13_adversarial_robustness",
+def test_extras_follow_the_install_target():
+    extras = run_project.extras
+    assert extras(run_project.project_dir("p10")) == ["--extra", "gurobi"]
+    assert extras(run_project.project_dir("p03")) == [
+        "--extra",
+        "notebook",
+        "--extra",
+        "screenshots",
     ]
+    assert extras(run_project.project_dir("p13")) == []
 
 
-def test_requirements_leave_out_local_and_colab_packages():
-    project = run_project.project_dir("p13")
-    specs = run_project.requirements(run_project.local_packages(project))
-    names = {s.split("=")[0].lower() for s in specs}
-    assert "numpy" in names and "pyyaml" in names
-    assert not names & {"torch", "torchvision", "portfolio-common", "loan-default"}
-    assert all("==" in s for s in specs)
+def test_make_runs_with_the_project_environment():
+    project = run_project.project_dir("p09")
+    command = run_project.make_command(project, "data sample", 0.1)
+    assert command[:4] == ["make", "-C", str(project), "data"]
+    assert f"PYTHON={project / '.venv' / 'bin' / 'python'}" in command
+    assert "SAMPLE=0.1" in command
+
+
+def test_colab_builds_of_pytorch_are_not_installed():
+    assert {"torch", "torchvision"} <= run_project.PROVIDED
 
 
 @pytest.mark.parametrize("name", ["free", "pro"])

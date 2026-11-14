@@ -1,5 +1,5 @@
 # Project 7: movie recommendations on MovieLens 32M. Run from this folder.
-PYTHON ?= python
+PYTHON ?= uv run python
 SOURCE ?=
 SMOKE_DIR := artifacts/smoke
 # Share of users kept by `make sample`, each with all their ratings; outputs stay under artifacts/sample.
@@ -9,7 +9,7 @@ SAMPLE_DIR := artifacts/sample
 .PHONY: install data train evaluate report all demo sample smoke test lint clean
 
 install:             ## this project with the demo extra and the shared common package
-	$(PYTHON) -m pip install -e ../../common -e ".[dev,demo]"
+	uv sync --extra demo
 
 data:                ## download ml-32m.zip (or SOURCE=<zip>), check its MD5 and counts, write tables and the time split
 	$(PYTHON) -m movie_recs.data $(if $(SOURCE),--source $(SOURCE))

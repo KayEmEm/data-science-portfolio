@@ -1,5 +1,5 @@
 # Project 4: email campaign uplift. Run from this folder.
-PYTHON ?= python
+PYTHON ?= uv run python
 SMOKE_DIR := artifacts/smoke
 # Share of customers kept by `make sample`, stratified by arm; outputs stay under artifacts/sample.
 SAMPLE ?= 0.25
@@ -9,7 +9,7 @@ SAMPLE_LABEL = hillstrom-2008 sample $(SAMPLE)
 .PHONY: install data experiment train evaluate observational report all sample smoke test lint clean
 
 install:             ## this project, the shared common package and CausalML (may compile from source)
-	$(PYTHON) -m pip install -e ../../common -e ".[dev,causalml]"
+	uv sync --extra causalml
 
 data:                ## download the Hillstrom CSV (0.4 MB), check its checksum and schema
 	$(PYTHON) -m email_uplift.data
