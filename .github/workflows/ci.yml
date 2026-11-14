@@ -204,16 +204,14 @@ jobs:
         working-directory: projects/p05_retail_forecasting
     env:
       MLFLOW_DISABLE_AGENT_HINT: "1"
-      PYTHON: python  # pip install until the PyTorch builds move to uv
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.13"
-      # Darts with PyTorch (the neural extra) is left out here: it is a large install.
-      # The pipeline and tests skip the N-HiTS model when it is absent.
-      - run: python -m pip install --upgrade pip  # 25.1 or later reads [dependency-groups]
-      - run: python -m pip install -e ../../common -e . --group dev
+          enable-cache: true
+          cache-dependency-glob: projects/p05_retail_forecasting/uv.lock
+      # torch and torchvision come from the PyTorch CPU index set in pyproject.toml.
+      - run: uv sync --locked
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on a synthetic archive (no download)
@@ -228,17 +226,14 @@ jobs:
         working-directory: projects/p06_road_damage
     env:
       MLFLOW_DISABLE_AGENT_HINT: "1"
-      PYTHON: python  # pip install until the PyTorch builds move to uv
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.13"
-      # The CPU builds of PyTorch and torchvision first, together, so that the project install pulls
-      # neither the CUDA build (several GB) nor a torchvision built for another PyTorch.
-      - run: python -m pip install torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cpu
-      - run: python -m pip install --upgrade pip  # 25.1 or later reads [dependency-groups]
-      - run: python -m pip install -e ../../common -e . --group dev
+          enable-cache: true
+          cache-dependency-glob: projects/p06_road_damage/uv.lock
+      # torch and torchvision come from the PyTorch CPU index set in pyproject.toml.
+      - run: uv sync --locked
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on synthetic zips (untrained weights, no data download)
@@ -253,16 +248,14 @@ jobs:
         working-directory: projects/p07_movie_recommender
     env:
       MLFLOW_DISABLE_AGENT_HINT: "1"
-      PYTHON: python  # pip install until the PyTorch builds move to uv
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.13"
-      # The CPU build of PyTorch first, so that the project install does not pull the CUDA build (several GB).
-      - run: python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
-      - run: python -m pip install --upgrade pip  # 25.1 or later reads [dependency-groups]
-      - run: python -m pip install -e ../../common -e . --group dev
+          enable-cache: true
+          cache-dependency-glob: projects/p07_movie_recommender/uv.lock
+      # torch and torchvision come from the PyTorch CPU index set in pyproject.toml.
+      - run: uv sync --locked
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on a synthetic archive (no download)
@@ -277,16 +270,14 @@ jobs:
         working-directory: projects/p08_network_anomaly
     env:
       MLFLOW_DISABLE_AGENT_HINT: "1"
-      PYTHON: python  # pip install until the PyTorch builds move to uv
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.13"
-      # The CPU build of PyTorch first, so that the project install does not pull the CUDA build (several GB).
-      - run: python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
-      - run: python -m pip install --upgrade pip  # 25.1 or later reads [dependency-groups]
-      - run: python -m pip install -e ../../common -e . --group dev
+          enable-cache: true
+          cache-dependency-glob: projects/p08_network_anomaly/uv.lock
+      # torch and torchvision come from the PyTorch CPU index set in pyproject.toml.
+      - run: uv sync --locked
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on synthetic flows (no data download)
@@ -345,17 +336,14 @@ jobs:
         working-directory: projects/p11_illicit_transactions
     env:
       MLFLOW_DISABLE_AGENT_HINT: "1"
-      PYTHON: python  # pip install until the PyTorch builds move to uv
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.13"
-      # The CPU build of PyTorch first, so that the project install does not pull the CUDA build (several GB).
-      # PyTorch Geometric is pure Python and needs no compiled extension.
-      - run: python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
-      - run: python -m pip install --upgrade pip  # 25.1 or later reads [dependency-groups]
-      - run: python -m pip install -e ../../common -e . --group dev
+          enable-cache: true
+          cache-dependency-glob: projects/p11_illicit_transactions/uv.lock
+      # torch and torchvision come from the PyTorch CPU index set in pyproject.toml.
+      - run: uv sync --locked
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on a synthetic graph (no data download, no Neo4j server)
@@ -370,16 +358,14 @@ jobs:
         working-directory: projects/p12_inventory_control
     env:
       MLFLOW_DISABLE_AGENT_HINT: "1"
-      PYTHON: python  # pip install until the PyTorch builds move to uv
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.13"
-      # The CPU build of PyTorch first, so that the project install does not pull the CUDA build (several GB).
-      - run: python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
-      - run: python -m pip install --upgrade pip  # 25.1 or later reads [dependency-groups]
-      - run: python -m pip install -e ../../common -e . --group dev
+          enable-cache: true
+          cache-dependency-glob: projects/p12_inventory_control/uv.lock
+      # torch and torchvision come from the PyTorch CPU index set in pyproject.toml.
+      - run: uv sync --locked
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on a synthetic archive (tiny training runs, no data download)
@@ -394,17 +380,14 @@ jobs:
         working-directory: projects/p13_adversarial_robustness
     env:
       MLFLOW_DISABLE_AGENT_HINT: "1"
-      PYTHON: python  # pip install until the PyTorch builds move to uv
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.13"
-      # The CPU build of PyTorch first, so that the project install does not pull the CUDA build (several GB).
-      - run: python -m pip install torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cpu
-      # The target projects 1, 6 and 8 are installed from their folders; their models are rebuilt from their code.
-      - run: python -m pip install --upgrade pip  # 25.1 or later reads [dependency-groups]
-      - run: python -m pip install -e ../../common -e ../p01_loan_default -e ../p06_road_damage -e ../p08_network_anomaly -e . --group dev
+          enable-cache: true
+          cache-dependency-glob: projects/p13_adversarial_robustness/uv.lock
+      # torch and torchvision come from the PyTorch CPU index set in pyproject.toml.
+      - run: uv sync --locked
       - run: make lint
       - run: make test
       - name: Smoke run of the full pipeline on synthetic sources and an untrained detector (no data download)
