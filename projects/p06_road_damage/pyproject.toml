@@ -45,6 +45,13 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.uv.sources]
 portfolio-common = {path = "../../common", editable = true}
+torch = {index = "pytorch-cpu"}
+torchvision = {index = "pytorch-cpu"}
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [dependency-groups]
 dev = ["pytest==9.1.1", "ruff==0.17.2"]

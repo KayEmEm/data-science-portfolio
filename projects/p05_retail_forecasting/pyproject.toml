@@ -26,7 +26,7 @@ dependencies = [
 [project.optional-dependencies]
 # Darts with PyTorch is a large install (about 1 GB). Without it the pipeline
 # skips the neural model and runs every other model.
-neural = ["darts[torch]==0.48.1"]
+neural = ["darts[torch]==0.48.1", "torch==2.14.1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -40,6 +40,12 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.uv.sources]
 portfolio-common = {path = "../../common", editable = true}
+torch = {index = "pytorch-cpu"}
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [dependency-groups]
 dev = ["pytest==9.1.1", "ruff==0.17.2"]

@@ -41,7 +41,7 @@ M5 holds sales, not demand: a day with zero sales can be a day out of stock. M5 
 
 ## The environment
 
-`inventory_rl` registers a [Gymnasium](https://gymnasium.farama.org) environment, `inventory_rl/InventoryControl-v0`, and installs as a package (`pip install -e .`):
+`inventory_rl` registers a [Gymnasium](https://gymnasium.farama.org) environment, `inventory_rl/InventoryControl-v0`, and installs as a package (`uv sync`):
 
 ```python
 import gymnasium as gym
